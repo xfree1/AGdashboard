@@ -1,0 +1,164 @@
+/* ================================================
+   AG BOARD — Design System
+   Noto Sans KR + 시스템 모노 폰트
+   ================================================ */
+
+/* Noto Sans KR: 한글 가독성 최고, Google Fonts 중 가장 안정적 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* --- Colors --- */
+  --color-bg:           #f0f4f8;
+  --color-surface:      #ffffff;
+  --color-surface-2:    #f5f8fc;
+  --color-border:       #dce6f0;
+  --color-border-light: #e8eef5;
+
+  --color-accent:       #288cfa;
+  --color-accent-dim:   rgba(40, 140, 250, 0.08);
+  --color-accent-dark:  #103766;
+  --color-accent-2:     #0057c2;
+  --color-warn:         #f59e0b;
+  --color-danger:       #ef4444;
+  --color-danger-dim:   rgba(239, 68, 68, 0.08);
+  --color-success:      #22c55e;
+
+  /* Sidebar */
+  --color-sidebar-bg:          #0f2044;
+  --color-sidebar-text:        rgba(255,255,255,0.65);
+  --color-sidebar-active-bg:   rgba(40,140,250,0.2);
+  --color-sidebar-active-text: #ffffff;
+  --color-sidebar-border:      rgba(255,255,255,0.08);
+
+  --color-text-primary:   #0f1f3d;
+  --color-text-secondary: #3d5470;
+  --color-text-muted:     #7a90a8;
+
+  /* --- Typography --- */
+  /* 본문: Noto Sans KR (한글 최적화) → 시스템 폰트 순서로 fallback */
+  --font-sans: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic',
+               -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* 숫자/코드: 시스템 모노 폰트 (별도 로드 없이 선명하게) */
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas',
+               'D2Coding', 'Courier New', monospace;
+
+  /* --- 폰트 크기 --- */
+  --text-xs:   0.75rem;    /* 12px */
+  --text-sm:   0.875rem;   /* 14px */
+  --text-base: 0.9375rem;  /* 15px */
+  --text-lg:   1.125rem;   /* 18px */
+  --text-xl:   1.375rem;   /* 22px */
+  --text-2xl:  1.75rem;    /* 28px */
+  --text-3xl:  2.25rem;    /* 36px */
+
+  /* --- Spacing --- */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* --- Layout --- */
+  --sidebar-width:  220px;
+  --header-height:  56px;
+  --content-max:    1400px;
+  --radius-sm:      4px;
+  --radius-md:      8px;
+  --radius-lg:      12px;
+
+  /* --- Shadows --- */
+  --shadow-card:  0 1px 4px rgba(15,31,61,0.07), 0 0 0 1px var(--color-border);
+  --shadow-glow:  0 0 16px rgba(40,140,250,0.2);
+  --shadow-popup: 0 8px 32px rgba(15,31,61,0.15);
+
+  /* --- Transitions --- */
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 350ms ease;
+}
+
+/* ================================================
+   Reset & Base
+   ================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: 400;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg);
+  line-height: 1.6;
+  letter-spacing: -0.01em;  /* 한글 자간 약간 줄이기 */
+}
+
+/* 숫자는 모노 폰트로 */
+.text-mono,
+td.val,
+td.pct,
+td.rank,
+.dd-kpi__value,
+.dd-kpi__label,
+.recharts-text {
+  font-family: var(--font-mono);
+}
+
+/* ================================================
+   Utility
+   ================================================ */
+.text-mono      { font-family: var(--font-mono); }
+.text-muted     { color: var(--color-text-muted); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-accent    { color: var(--color-accent); }
+.text-danger    { color: var(--color-danger); }
+.text-warn      { color: var(--color-warn); }
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+.label--accent {
+  background: var(--color-accent-dim);
+  color: var(--color-accent);
+  border-color: rgba(40,140,250,0.25);
+}
+.label--danger {
+  background: var(--color-danger-dim);
+  color: var(--color-danger);
+  border-color: rgba(239,68,68,0.25);
+}
+
+.divider { height: 1px; background: var(--color-border); border: none; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
