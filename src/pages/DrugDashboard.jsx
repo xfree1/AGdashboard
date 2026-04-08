@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { DRUGS } from '../config/drugs';
-import { weekIdToSat, weekIdToYearMonth, fmtWeekLabel } from '../utils/weekUtils';
-import { COLOR_ACCENT, DRUG_DOT_COLORS } from '../styles/tokens';
+import { weekIdToYearMonth, fmtWeekLabel } from '../utils/weekUtils';
 import { loadMonthlySales } from '../utils/supabaseLoader';
 import KpiSection  from '../components/KpiSection';
 import TrendChart  from '../components/TrendChart';
