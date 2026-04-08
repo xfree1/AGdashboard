@@ -75,24 +75,6 @@ export default function TrendChart({ allWeeks, vendorsSorted, myVendor, metricLa
     };
   }
 
-  // 1년 전체 raw 데이터 (축 범위 고정용)
-  const weeklyRaw1Y = useMemo(() => {
-    const weeks1Y = allWeeks.slice(-52);
-    const indices1Y = weeks1Y.map(w => allWeeks.indexOf(w));
-    return weeks1Y.map((w, wi) => {
-      const idx    = indices1Y[wi];
-      const parsed = parseWeekParts(w);
-      const abs    = {};
-      let total    = 0;
-      vendorsSorted.forEach(v => {
-        const val   = v.allByWeek[idx] ?? 0;
-        abs[v.name] = val;
-        total      += val;
-      });
-      return { parsed, abs, total };
-    });
-  }, [allWeeks, vendorsSorted]);
-
   const chartData = useMemo(() => {
     if (period === '3M') {
       return weeklyRaw.map(d =>
@@ -116,6 +98,7 @@ export default function TrendChart({ allWeeks, vendorsSorted, myVendor, metricLa
       const labelStr  = isNewYear ? `${String(e.year).slice(2)}.${e.month}` : String(e.month);
       return makeRow(e.abs, e.total, labelStr, `${e.year}년 ${e.month}월`);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weeklyRaw, period, myVendor]);
 
   const { msDomain, msInterval } = useMemo(() => {
@@ -276,6 +259,7 @@ export default function TrendChart({ allWeeks, vendorsSorted, myVendor, metricLa
         </div>`;
       },
     },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [chartData, msDomain, msInterval, myVendor]);
 
   return (
