@@ -114,7 +114,6 @@ export default function Admin() {
   const importRef = React.useRef(null);
 
   const [importing,  setImporting]  = useState(false);
-  const [importMsg,  setImportMsg]  = useState('');
   const [importErr,  setImportErr]  = useState('');
   const [dragging,   setDragging]   = useState(false);
 
@@ -147,7 +146,6 @@ export default function Admin() {
     }
 
     setImporting(true);
-    setImportMsg('');
     setImportErr('');
 
     // React가 오버레이를 렌더할 수 있도록 한 프레임 양보

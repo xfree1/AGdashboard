@@ -49,7 +49,6 @@ export default function VendorTable({ vendorsSorted, allWeeks, myVendor, metricL
   const rangeStart = bracketIdx * 10;       // 0-based
   const rangeEnd   = rangeStart + 10;       // exclusive
 
-  const above   = allVendors.slice(0, rangeStart);
   const bracket = allVendors.slice(rangeStart, rangeEnd);
   const below   = allVendors.slice(rangeEnd);
 

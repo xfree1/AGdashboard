@@ -115,8 +115,7 @@ export default function DataPreview() {
 
     load();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drug?.dbId]);
+  }, [drug, metric]);
 
   // 매출 탭 선택 시 로드
   useEffect(() => {
@@ -126,8 +125,7 @@ export default function DataPreview() {
     loadMonthlySales(drug.dbId)
       .then(data => { setSalesRows(data); setSalesColEnd(data.length); setSalesLoading(false); })
       .catch(e  => { setSalesError(e.message); setSalesLoading(false); });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, drug?.dbId]);
+  }, [activeTab, drug]);
 
   if (!drug) {
     return <div className="preview-not-found">약품을 찾을 수 없습니다.</div>;

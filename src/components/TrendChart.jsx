@@ -4,7 +4,6 @@ import { parseWeekParts } from '../utils/weekUtils';
 import {
   COLOR_CHART_MARKET   as MARKET_COLOR,
   COLOR_CHART_MS       as MS_COLOR,
-  COLOR_CHART_VENDOR   as VENDOR_COLOR,
   COLOR_TEXT_3         as TEXT_3,
   COLOR_SURFACE        as SURFACE,
   COLOR_TEXT_PRIMARY   as TEXT_PRIMARY,
@@ -119,13 +118,6 @@ export default function TrendChart({ allWeeks, vendorsSorted, myVendor, metricLa
     });
   }, [weeklyRaw, period, myVendor]);
 
-  // 축 범위는 항상 1년 데이터 기준으로 고정
-  const msAvg = useMemo(() => {
-    const total1Y = weeklyRaw1Y.reduce((s, d) => s + d.total, 0);
-    const myVal1Y = weeklyRaw1Y.reduce((s, d) => s + (d.abs[myVendor] ?? 0), 0);
-    return total1Y > 0 ? myVal1Y / total1Y * 100 : 0;
-  }, [weeklyRaw1Y, myVendor]);
-
   const { msDomain, msInterval } = useMemo(() => {
     const msValues = chartData.map(d => d.ms).filter(v => v > 0);
     if (msValues.length === 0) return { msDomain: [0, 100], msInterval: 20 };
@@ -166,8 +158,6 @@ export default function TrendChart({ allWeeks, vendorsSorted, myVendor, metricLa
       growthMkt: gr(sumT(curr), sumT(prev)),
     };
   }, [weeklyRaw, myVendor]);
-
-  const fmtGr = v => v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
 
   const option = useMemo(() => ({
     animation: false,

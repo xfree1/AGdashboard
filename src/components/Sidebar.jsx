@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { DRUG_DOT_COLORS } from '../styles/tokens';
 import './Sidebar.css';
 
 /* ── Flat SVG Icons ── */
