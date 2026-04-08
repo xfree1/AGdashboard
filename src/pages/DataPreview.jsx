@@ -115,6 +115,7 @@ export default function DataPreview() {
 
     load();
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drug?.dbId]);
 
   // 매출 탭 선택 시 로드
@@ -125,6 +126,7 @@ export default function DataPreview() {
     loadMonthlySales(drug.dbId)
       .then(data => { setSalesRows(data); setSalesColEnd(data.length); setSalesLoading(false); })
       .catch(e  => { setSalesError(e.message); setSalesLoading(false); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, drug?.dbId]);
 
   if (!drug) {
