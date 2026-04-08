@@ -1,10 +1,7 @@
 /* ================================================
    AG BOARD — Design System
-   Noto Sans KR + 시스템 모노 폰트
+   Pretendard Variable + 시스템 모노 폰트
    ================================================ */
-
-/* Noto Sans KR: 한글 가독성 최고, Google Fonts 중 가장 안정적 */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
 
 :root {
   /* --- Colors --- */
@@ -17,16 +14,14 @@
   --color-accent:       #288cfa;
   --color-accent-dim:   rgba(40, 140, 250, 0.08);
   --color-accent-dark:  #103766;
-  --color-accent-2:     #0057c2;
   --color-warn:         #f59e0b;
-  --color-danger:       #ef4444;
-  --color-danger-dim:   rgba(239, 68, 68, 0.08);
-  --color-success:      #22c55e;
+  --color-danger:       #dc2626;
+  --color-danger-dim:   rgba(220, 38, 38, 0.08);
+  --color-success:      #16a34a;
 
   /* Sidebar */
-  --color-sidebar-bg:          #0f2044;
-  --color-sidebar-text:        rgba(255,255,255,0.65);
-  --color-sidebar-active-bg:   rgba(40,140,250,0.2);
+  --color-sidebar-bg:          #0a0a0a;
+  --color-sidebar-text:        rgba(255,255,255,0.55);
   --color-sidebar-active-text: #ffffff;
   --color-sidebar-border:      rgba(255,255,255,0.08);
 
@@ -34,23 +29,80 @@
   --color-text-secondary: #3d5470;
   --color-text-muted:     #7a90a8;
 
+  /* Chart - blue-grey (파이 차트 기타 vendor 계열) */
+  --color-bluegrey-text: #546e7a;
+
+  /* Chart - 트렌드 콤보차트 */
+  --color-chart-market: #93c5fd;
+  --color-chart-vendor: #60a5fa;
+
+  /* Sidebar hover/active (DrugDashboard) */
+  --color-sidebar-hover-bg: rgba(255,255,255,0.07);
+
+  /* Badge: 증감 up/down */
+  --color-badge-up-text:   #14532d;
+  --color-badge-up-bg:     #dcfce7;
+  --color-badge-down-text: #7f1d1d;
+  --color-badge-down-bg:   #fee2e2;
+
+  /* Table: 당월(col-cur) 컬럼 하이라이트 */
+  --color-col-cur-bg:       #f0f6ff;
+  --color-col-cur-my-bg:    #dbeafe;
+  --color-col-cur-total-bg: #e8f0fe;
+
+  /* Accent 파생 */
+  --color-accent-hover:  #1a7ae8;
+  --color-accent-border: rgba(40,140,250,0.27);
+  --color-accent-mid:    rgba(40, 140, 250, 0.12);  /* 강조 중간 배경 (hover) */
+  --color-accent-bright: rgba(40, 140, 250, 0.18);  /* 강조 밝은 배경 (new badge) */
+
+  /* Warn (amber) 파생 */
+  --color-warn-dark:        #92400e;                   /* amber-900, 경고 진한 텍스트 */
+  --color-warn-mid:         #b45309;                   /* amber-700, 로딩 스피너 */
+  --color-warn-mid-dim:     rgba(180, 83, 9, 0.25);    /* 로딩 스피너 테두리 */
+  --color-warn-cell-bg:     rgba(245, 158, 11, 0.12);  /* 변경 셀 배경 */
+  --color-warn-header-bg:   rgba(245, 158, 11, 0.08);  /* 경고 헤더 배경 */
+  --color-warn-dim:         rgba(245, 158, 11, 0.07);  /* 경고 통계 배경 */
+  --color-warn-subtle:      rgba(245, 158, 11, 0.06);  /* 경고 항목 호버 */
+  --color-warn-light:       rgba(245, 158, 11, 0.05);  /* 경고 패널 배경 */
+  --color-warn-border-light: rgba(245, 158, 11, 0.20); /* 경고 헤더 구분선 */
+  --color-warn-border:      rgba(245, 158, 11, 0.35);  /* 경고 테두리 */
+
+  /* Success 파생 */
+  --color-success-dim:    rgba(22, 163, 74, 0.05);  /* 성공 배경 */
+  --color-success-tint:   rgba(22, 163, 74, 0.03);  /* 성공 행 배경 (극연한) */
+  --color-success-border: rgba(22, 163, 74, 0.25);  /* 성공 테두리 */
+
+  /* Danger 파생 */
+  --color-danger-border:  rgba(220, 38, 38, 0.25);  /* 오류 테두리 */
+  --color-danger-tint:    rgba(220, 38, 38, 0.03);  /* 오류 행 배경 (극연한) */
+
+  /* Overlay */
+  --color-overlay-surface: rgba(255, 255, 255, 0.75); /* 반투명 흰색 오버레이 */
+
+  /* 미묘한 구분선 */
+  --color-border-subtle: rgba(0,0,0,0.12);
+
   /* --- Typography --- */
-  /* 본문: Noto Sans KR (한글 최적화) → 시스템 폰트 순서로 fallback */
-  --font-sans: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic',
-               -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* 본문: Pretendard Variable (한글+영문 최적화) → 시스템 폰트 순서로 fallback */
+  --font-sans: 'Pretendard Variable', Pretendard, sans-serif;
 
   /* 숫자/코드: 시스템 모노 폰트 (별도 로드 없이 선명하게) */
   --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas',
                'D2Coding', 'Courier New', monospace;
 
   /* --- 폰트 크기 --- */
-  --text-xs:   0.75rem;    /* 12px */
-  --text-sm:   0.875rem;   /* 14px */
-  --text-base: 0.9375rem;  /* 15px */
-  --text-lg:   1.125rem;   /* 18px */
-  --text-xl:   1.375rem;   /* 22px */
-  --text-2xl:  1.75rem;    /* 28px */
-  --text-3xl:  2.25rem;    /* 36px */
+  --text-xs:   0.75rem;    /* 12px — 라벨, 뱃지, 힌트 (10·11·12px 통합) */
+  --text-sm:   0.875rem;   /* 14px — 본문, 테이블, UI 컨트롤 (13·14px 통합) */
+  --text-base: 1rem;       /* 16px — body 기본, 로고, 드롭존 (15·16px 통합) */
+  --text-lg:   1.125rem;   /* 18px — 섹션 제목 */
+  --text-xl:   1.25rem;    /* 20px — 상품명, 페이지 헤딩 */
+  --text-2xl:  1.625rem;   /* 26px — 도넛 센터, Admin 제목 (24·26px 통합) */
+  --text-3xl:  2rem;       /* 32px — KPI 핵심 수치 */
+
+  /* --- KPI 카드 전용 (여기서만 조절) --- */
+  --kpi-value-size: 1.875rem;  /* 30px */
+  --kpi-label-size: 1rem;      /* 16px */
 
   /* --- Spacing --- */
   --space-1:  4px;
@@ -64,7 +116,7 @@
   --space-12: 48px;
 
   /* --- Layout --- */
-  --sidebar-width:  220px;
+  --sidebar-width:  240px;
   --header-height:  56px;
   --content-max:    1400px;
   --radius-sm:      4px;
@@ -77,9 +129,13 @@
   --shadow-popup: 0 8px 32px rgba(15,31,61,0.15);
 
   /* --- Transitions --- */
+  /* --- Button sizes --- */
+  --btn-lg-pad-y: 11px;
+  --btn-lg-pad-x: var(--space-6);
+  --btn-lg-font:  var(--text-base);
+
   --transition-fast: 120ms ease;
   --transition-base: 200ms ease;
-  --transition-slow: 350ms ease;
 }
 
 /* ================================================
@@ -96,6 +152,7 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -108,14 +165,8 @@ body {
   letter-spacing: -0.01em;  /* 한글 자간 약간 줄이기 */
 }
 
-/* 숫자는 모노 폰트로 */
-.text-mono,
-td.val,
-td.pct,
-td.rank,
-.dd-kpi__value,
-.dd-kpi__label,
-.recharts-text {
+/* 명시적으로 모노 폰트가 필요한 곳에만 사용 */
+.text-mono {
   font-family: var(--font-mono);
 }
 
@@ -156,6 +207,34 @@ td.rank,
 }
 
 .divider { height: 1px; background: var(--color-border); border: none; }
+
+/* ── Animation Utilities ────────────────────────── */
+
+/* Underline Slide: 클릭 시 왼→오 밑줄이 그어지고 fade-out */
+.anim-underline-slide {
+  position: relative;
+}
+.anim-underline-slide::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--color-accent);
+  border-radius: 2px;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+.anim-underline-slide.--triggered::after {
+  animation: underline-slide 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes underline-slide {
+  0%   { transform: scaleX(0); opacity: 1; }
+  55%  { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

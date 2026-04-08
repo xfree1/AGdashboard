@@ -1,19 +1,21 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Upload from './pages/Upload';
-import Dashboard from './pages/Dashboard';
+import Admin from './pages/Admin';
+import DataPreview from './pages/DataPreview';
+import UploadConfirm from './pages/UploadConfirm';
 import './styles/variables.css';
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* 기본 진입점: 업로드 페이지 */}
-        <Route path="/" element={<Navigate to="/upload" replace />} />
+        <Route path="/" element={<Upload />} />
         <Route path="/upload" element={<Upload />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        {/* 404 fallback */}
-        <Route path="*" element={<Navigate to="/upload" replace />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/preview/:drugId" element={<DataPreview />} />
+        <Route path="/admin/upload-confirm" element={<UploadConfirm />} />
+        <Route path="*" element={<Upload />} />
       </Routes>
     </Router>
   );

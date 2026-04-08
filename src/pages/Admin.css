@@ -1,0 +1,375 @@
+/* 구분선 위 heading 영역 — 모든 관리자 페이지에서 동일한 높이 고정 */
+.admin-head {
+  height: 130px;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+/* ── Admin Heading Row ──────────────────────────────── */
+
+.admin-heading-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-5);
+}
+
+.admin-full-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--color-border);
+  margin-bottom: 0;
+}
+
+.admin-body-wrap {
+  background: var(--color-surface);
+  flex: 1;
+}
+
+.ag-content--compact {
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
+  gap: var(--space-2);
+}
+
+/* ── Admin Toolbar (Import / Export 영역) ───────────── */
+
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.admin-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.admin-toolbar-label {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-accent-dark);
+}
+
+
+.admin-toolbar-btns {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px var(--space-4);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.admin-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-action-btn--lg {
+  padding: var(--btn-lg-pad-y) var(--btn-lg-pad-x);
+  font-size: var(--btn-lg-font);
+  gap: var(--space-2);
+}
+
+.admin-action-btn--primary {
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-sidebar-active-text);
+}
+
+.admin-action-btn--primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+.admin-action-btn--secondary {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+}
+
+.admin-action-btn--secondary:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-dim);
+}
+
+/* ── Upload Single (1-column) ───────────────────────── */
+
+.upload-single {
+  display: block;
+  position: relative;
+}
+
+.upload-single--dragging .upload-table-wrap,
+.upload-single--importing .upload-table-wrap {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-dim);
+  filter: blur(2px);
+}
+
+.upload-drag-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: var(--color-overlay-surface);
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.upload-drag-overlay__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-accent);
+  font-size: var(--text-base);
+  font-weight: 700;
+}
+
+.upload-overlay-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-accent-dim);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ── Upload Table ───────────────────────────────────── */
+
+.upload-table-wrap {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.upload-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+/* Head */
+.upload-th {
+  background: var(--color-surface-2);
+  padding: 11px var(--space-4);
+  text-align: left;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.upload-th--name   { }
+.upload-th--date   { width: 120px; white-space: nowrap; }
+.upload-th--tab    { width: 64px; text-align: center; }
+.upload-th--edit   { width: 48px; text-align: center; }
+
+/* Row */
+.upload-row {
+  transition: background var(--transition-fast);
+}
+.upload-row:hover {
+  background: var(--color-surface-2);
+}
+.upload-row + .upload-row > .upload-td {
+  border-top: 1px solid var(--color-border-light);
+}
+
+.upload-td {
+  padding: 13px var(--space-4);
+  vertical-align: middle;
+}
+
+.upload-td--edit,
+.upload-td--upload {
+  text-align: center;
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}
+
+/* Tab dot cell */
+.upload-td--tab {
+  text-align: center;
+  padding: 13px var(--space-2);
+}
+
+.upload-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border);
+  flex-shrink: 0;
+  transition: background var(--transition-fast);
+}
+
+.upload-status-dot--on {
+  background: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-dim);
+}
+
+/* Drug name cell */
+.upload-td--name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.upload-drug-name {
+  font-weight: 700;
+  color: var(--color-accent-dark);
+  font-size: var(--text-base);
+}
+
+/* Date cell */
+.upload-date-value {
+  font-size: var(--text-xs);
+  font-family: var(--font-sans);
+  color: var(--color-text-secondary);
+}
+
+.upload-date-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-warn-mid);
+}
+
+.upload-date-error {
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+/* Spinner */
+.upload-spinner {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid var(--color-warn-mid-dim);
+  border-top-color: var(--color-warn-mid);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.upload-spinner--white {
+  border-color: rgba(255,255,255,0.35);
+  border-top-color: var(--color-sidebar-active-text);
+}
+
+/* Icon buttons */
+.upload-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.upload-icon-btn:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-dim);
+}
+
+.upload-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.upload-icon-btn--dots {
+  font-size: var(--text-sm);
+  letter-spacing: 1px;
+  color: var(--color-text-muted);
+}
+
+/* Row state tints */
+.upload-row--done:not(:hover) {
+  background: var(--color-success-tint);
+}
+.upload-row--error:not(:hover) {
+  background: var(--color-danger-tint);
+}
+
+/* ── Admin 로딩 / 오류 ──────────────────────────────── */
+
+.admin-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-12);
+  color: var(--color-text-secondary);
+}
+
+.admin-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.admin-error {
+  background: var(--color-danger-dim);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-danger);
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-error--mb {
+  margin-bottom: var(--space-3);
+}
+
+.admin-error__close {
+  margin-left: var(--space-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-weight: 700;
+  flex-shrink: 0;
+  padding: 0;
+}

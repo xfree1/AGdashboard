@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ':*)",
+      "Bash(npm run:*)",
+      "Bash(grep -Prn \"rgba\\\\\\(|#[0-9a-fA-F]{3,6}\" c:/Users/user/Desktop/ag-board/src/components --include=\"*.css\")",
+      "Bash(grep -Prn \"rgba\\\\\\(|#[0-9a-fA-F]{3,6}\" c:/Users/user/Desktop/ag-board/src/pages --include=\"*.css\")",
+      "Bash(grep -En \"rgba\\\\\\(|#[0-9a-fA-F]{3,6}\" c:/Users/user/Desktop/ag-board/src/components/KPICard.css c:/Users/user/Desktop/ag-board/src/components/ChartSection.css c:/Users/user/Desktop/ag-board/src/components/Sidebar.css c:/Users/user/Desktop/ag-board/src/components/TableSection.css)",
+      "Bash(grep -En \"rgba\\\\\\(|#[0-9a-fA-F]{3,6}\" c:/Users/user/Desktop/ag-board/src/pages/Dashboard.css c:/Users/user/Desktop/ag-board/src/pages/Upload.css c:/Users/user/Desktop/ag-board/src/pages/DrugDashboard.css c:/Users/user/Desktop/ag-board/src/pages/Admin.css c:/Users/user/Desktop/ag-board/src/pages/DataPreview.css c:/Users/user/Desktop/ag-board/src/pages/UploadConfirm.css)",
+      "Bash(git add:*)"
+    ]
+  }
+}

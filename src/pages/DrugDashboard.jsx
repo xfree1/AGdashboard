@@ -1,267 +1,179 @@
-import React, { useState, useMemo } from 'react';
-import {
-  ResponsiveContainer, LineChart, Line, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine,
-} from 'recharts';
+import { useMemo, useState, useEffect } from 'react';
+import { DRUGS } from '../config/drugs';
+import { weekIdToSat, weekIdToYearMonth, fmtWeekLabel } from '../utils/weekUtils';
+import { COLOR_ACCENT, DRUG_DOT_COLORS } from '../styles/tokens';
+import { loadMonthlySales } from '../utils/supabaseLoader';
+import KpiSection  from '../components/KpiSection';
+import TrendChart  from '../components/TrendChart';
+import ShareDonut  from '../components/ShareDonut';
+import VendorTable from '../components/VendorTable';
+import Sidebar     from '../components/Sidebar';
 import './DrugDashboard.css';
 
-/* ─── 색상 ─── */
-const MY_COLOR   = '#288cfa';   // 안국약품
-const COMP_COLORS = ['#f59e0b', '#ef4444', '#22c55e', '#a78bfa', '#06b6d4', '#f97316', '#84cc16'];
+function ymKey(y, m) { return `${y}-${String(m).padStart(2, '0')}`; }
 
-function getColor(vendor, myVendor, rankAmongOthers) {
-  if (vendor === myVendor) return MY_COLOR;
-  return COMP_COLORS[rankAmongOthers % COMP_COLORS.length];
+function prevYM(year, month) {
+  return month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
 }
 
-/* ─── 포맷 ─── */
-const fmtPct = (v) => v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
-const fmtNum = (v) => v == null ? '—' : v.toLocaleString();
-const pctClass = (v) => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
-
-/* ─── 툴팁 ─── */
-function MsTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null;
-  const sorted = [...payload].sort((a, b) => b.value - a.value);
-  return (
-    <div className="dd-tooltip">
-      <p className="dd-tooltip__label">{label}</p>
-      {sorted.map((e, i) => (
-        <p key={i} style={{ color: e.color }}>
-          {e.name}: <strong>{e.value?.toFixed(1)}%</strong>
-        </p>
-      ))}
-    </div>
-  );
-}
-
-/* ─── KPI 카드 ─── */
-function KPICard({ label, value, sub, delta, highlight }) {
-  return (
-    <div className={`dd-kpi ${highlight ? 'dd-kpi--highlight' : ''}`}>
-      <p className="dd-kpi__label">{label}</p>
-      <p className="dd-kpi__value">{value}</p>
-      {sub && <p className="dd-kpi__sub">{sub}</p>}
-      {delta != null && (
-        <span className={`dd-badge dd-badge--${pctClass(delta)}`}>
-          전주 {fmtPct(delta)}
-        </span>
-      )}
-    </div>
-  );
-}
-
-/* ─── 메인 ─── */
-export default function DrugDashboard({ result, onReset }) {
-  const [showTop, setShowTop] = useState(5);
-  const [chartMode, setChartMode] = useState('ms');   // 'ms' | 'abs'
-
-  const { drugName, myVendor, weeks, vendors, marketByWeek, msChartData, metric, fileName } = result;
-
-  /* 우리 회사 데이터 */
-  const me = vendors.find(v => v.name === myVendor);
-  const others = vendors.filter(v => v.name !== myVendor);
-
-  /* 최신 주차 M/S */
-  const lastIdx   = weeks.length - 1;
-  const prevIdx   = weeks.length - 2;
-  const myMsLast  = me ? me.msPerWeek[lastIdx] * 100 : 0;
-  const myMsPrev  = me && prevIdx >= 0 ? me.msPerWeek[prevIdx] * 100 : null;
-  const myMsDelta = myMsPrev != null ? myMsLast - myMsPrev : null;
-
-  /* 순위 */
-  const myRank = vendors.findIndex(v => v.name === myVendor) + 1;
-
-  /* 표시할 판매사 목록 (우리 + top N 경쟁사) */
-  const displayVendors = useMemo(() => {
-    const top = others.slice(0, showTop);
-    return [me, ...top].filter(Boolean);
-  }, [me, others, showTop]);
-
-  /* 차트 데이터 */
-  const chartData = useMemo(() => {
-    if (chartMode === 'ms') return msChartData;
-    // abs: 절대 수치
-    return weeks.map((week, wi) => {
-      const obj = { week };
-      displayVendors.forEach(v => { obj[v.name] = Math.round(v.byWeek[wi]); });
-      return obj;
-    });
-  }, [chartMode, msChartData, weeks, displayVendors]);
-
+export default function DrugDashboard({ result, onDrugChange, activeSection, onDashboardClick }) {
+  const { drugName, drugId, myVendor, allWeeks, vendorsSorted, metric } = result;
   const metricLabel = metric === 'qty' ? '처방량' : '처방건수';
+  const currentDrug = DRUGS.find(d => d.id === drugId) || DRUGS.find(d => d.name === drugName) || DRUGS[0];
+
+  // 전체 주차 기준으로 vendors 계산 (TrendChart, ShareDonut, VendorTable용)
+  const { vendors, mktByWeek } = useMemo(() => {
+    const mktByWeek = allWeeks.map((_, wi) =>
+      vendorsSorted.reduce((s, v) => s + (v.allByWeek[wi] ?? 0), 0)
+    );
+    const mktTotal = mktByWeek.reduce((a, b) => a + b, 0);
+    const vendors = vendorsSorted.map(v => {
+      const byWeek    = v.allByWeek;
+      const total     = byWeek.reduce((a, b) => a + b, 0);
+      const msPerWeek = byWeek.map((val, wi) => mktByWeek[wi] > 0 ? val / mktByWeek[wi] : 0);
+      const msTotal   = mktTotal > 0 ? total / mktTotal : 0;
+      return { name: v.name, byWeek, total, msPerWeek, msTotal };
+    }).sort((a, b) => b.total - a.total);
+    return { vendors, mktByWeek };
+  }, [vendorsSorted, allWeeks]);
+
+  const me            = vendors.find(v => v.name === myVendor);
+  const lastWeekLabel = fmtWeekLabel(allWeeks[allWeeks.length - 1]);
+
+  // ── 매출 데이터 ──────────────────────────────────────────
+  const [salesData, setSalesData] = useState([]);  // [{ month_id, sales }]
+  useEffect(() => {
+    const dbId = DRUGS.find(d => d.id === drugId)?.dbId;
+    if (!dbId) return;
+    loadMonthlySales(dbId)
+      .then(setSalesData)
+      .catch(() => setSalesData([]));
+  }, [drugId]);
+
+  // ── 월별 그룹 ──────────────────────────────────────────
+  const monthGroups = useMemo(() => {
+    const groups = {};
+    allWeeks.forEach((w, i) => {
+      const ym = weekIdToYearMonth(w);
+      if (!ym) return;
+      const key = ymKey(ym.year, ym.month);
+      if (!groups[key]) groups[key] = { year: ym.year, month: ym.month, indices: [] };
+      groups[key].indices.push(i);
+    });
+    return groups;
+  }, [allWeeks]);
+
+  // 마지막 업로드 데이터 기준 "직전 완성 월"과 "전전 월" 결정
+  const { lcKey, pmKey, lcLabel, pmLabel } = useMemo(() => {
+    const lastYM = weekIdToYearMonth(allWeeks[allWeeks.length - 1]);
+    const lc = lastYM ?? prevYM(new Date().getFullYear(), new Date().getMonth() + 1);
+    const pm = prevYM(lc.year, lc.month);
+    return {
+      lcKey:   ymKey(lc.year, lc.month),
+      pmKey:   ymKey(pm.year, pm.month),
+      lcLabel: `${lc.month}월`,
+      pmLabel: `${pm.month}월`,
+    };
+  }, [allWeeks]);
+
+  // 월 합산 KPI 계산
+  const kpi = useMemo(() => {
+    const lcIdx = monthGroups[lcKey]?.indices ?? [];
+    const pmIdx = monthGroups[pmKey]?.indices ?? [];
+    const hasPm = pmIdx.length > 0;
+
+    const sumV   = (v, idxs) => idxs.reduce((s, i) => s + (v?.byWeek[i] ?? 0), 0);
+    const sumMkt = (idxs)    => idxs.reduce((s, i) => s + (mktByWeek[i] ?? 0), 0);
+
+    const myRxCurr = Math.round(sumV(me, lcIdx));
+    const myRxPrev = hasPm ? Math.round(sumV(me, pmIdx)) : null;
+
+    const mktCurr  = sumMkt(lcIdx);
+    const mktPrev  = hasPm ? sumMkt(pmIdx) : null;
+
+    const myMsCurr = me && mktCurr > 0 ? sumV(me, lcIdx) / mktCurr * 100 : 0;
+    const myMsPrev = me && mktPrev !== null && mktPrev > 0
+      ? sumV(me, pmIdx) / mktPrev * 100 : null;
+
+    const mktRxCurr = Math.round(mktCurr);
+    const mktRxPrev = mktPrev !== null ? Math.round(mktPrev) : null;
+
+    return { myRxCurr, myRxPrev, myMsCurr, myMsPrev, mktRxCurr, mktRxPrev };
+  }, [me, mktByWeek, monthGroups, lcKey, pmKey]);
+
+  // 월별 매출 KPI
+  const salesKpi = useMemo(() => {
+    const byMonth = {};
+    salesData.forEach(({ month_id, sales }) => { byMonth[month_id] = sales; });
+    const salesCurr = byMonth[lcKey] ?? null;
+    const salesPrev = byMonth[pmKey] ?? null;
+    return { salesCurr, salesPrev };
+  }, [salesData, lcKey, pmKey]);
 
   return (
-    <div className="dd-root">
-      {/* 헤더 */}
-      <header className="dd-header">
-        <div className="dd-header__left">
-          <div className="dd-header__logo">
-            <span className="dd-logo-mark">AG</span>
-            <span className="dd-logo-name">board</span>
-          </div>
-          <div className="dd-header__title-wrap">
-            <h1 className="dd-header__title">{drugName}</h1>
-            <p className="dd-header__sub">
-              {fileName} · {metricLabel} 기준 · {weeks[0]} ~ {weeks[lastIdx]}
-            </p>
-          </div>
-        </div>
-        <button className="dd-btn dd-btn--ghost" onClick={onReset}>
-          ↑ 새 파일 업로드
-        </button>
-      </header>
+    <div className="ag-root">
 
-      <main className="dd-content">
+      {/* ── Sidebar ── */}
+      <Sidebar
+        drugs={DRUGS}
+        currentDrug={currentDrug}
+        onDrugChange={onDrugChange}
+        activeSection={activeSection}
+        onDashboardClick={onDashboardClick}
+      />
 
-        {/* KPI 그리드 */}
-        <section className="dd-kpi-grid">
-          <KPICard
-            label={`M/S (${weeks[lastIdx]})`}
-            value={`${myMsLast.toFixed(1)}%`}
-            delta={myMsDelta}
-            highlight
-          />
-          <KPICard
-            label="시장 순위"
-            value={`${myRank}위`}
-            sub={`/ ${vendors.length}개사`}
-          />
-          <KPICard
-            label={`${weeks[lastIdx]} ${metricLabel}`}
-            value={fmtNum(me ? Math.round(me.byWeek[lastIdx]) : 0)}
-          />
-          <KPICard
-            label="6주 평균 M/S"
-            value={`${me ? (me.msTotal * 100).toFixed(1) : 0}%`}
-          />
-        </section>
+      {/* ── Main ── */}
+      <div className="ag-main">
 
-        {/* M/S 추이 차트 */}
-        <section className="dd-card">
-          <div className="dd-card__header">
-            <p className="dd-card__title">
-              주차별 {chartMode === 'ms' ? 'M/S (%)' : `${metricLabel} (절대값)`}
-            </p>
-            <div className="dd-controls">
-              <div className="dd-btn-group">
-                {[['ms','M/S (%)'],['abs','절대값']].map(([k,l]) => (
-                  <button key={k} className={`dd-btn-sm ${chartMode===k?'active':''}`} onClick={() => setChartMode(k)}>{l}</button>
-                ))}
+        <div className="ag-content">
+
+          {/* Product header */}
+          <div className="ag-product-header-wrap">
+            <div>
+              <div className="ag-product-name">
+                <span style={{ fontWeight: 400 }}>{lcKey.split('-')[0].slice(2)}년 {lcLabel} </span>{drugName}
               </div>
-              <div className="dd-btn-group">
-                {[3,5,10].map(n => (
-                  <button key={n} className={`dd-btn-sm ${showTop===n?'active':''}`} onClick={() => setShowTop(n)}>Top {n}</button>
-                ))}
-              </div>
+              <div className="ag-product-updated">최종 업데이트: {lastWeekLabel}</div>
             </div>
           </div>
-          <div className="dd-card__body">
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#dce6f0" vertical={false} />
-                <XAxis dataKey="week" tick={{ fill: '#8fa3bb', fontSize: 11, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
-                <YAxis
-                  tick={{ fill: '#8fa3bb', fontSize: 11, fontFamily: 'IBM Plex Mono' }}
-                  axisLine={false} tickLine={false}
-                  tickFormatter={v => chartMode === 'ms' ? `${v}%` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : v}
-                />
-                <Tooltip content={<MsTooltip />} />
-                <Legend wrapperStyle={{ fontSize: 11, fontFamily: 'IBM Plex Mono', color: '#4a6080' }} />
-                {displayVendors.map((v, i) => {
-                  const color = getColor(v.name, myVendor, i - 1);
-                  const isMe  = v.name === myVendor;
-                  return (
-                    <Line
-                      key={v.name}
-                      type="monotone"
-                      dataKey={v.name}
-                      stroke={color}
-                      strokeWidth={isMe ? 2.5 : 1.5}
-                      strokeDasharray={isMe ? undefined : '4 2'}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                    />
-                  );
-                })}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
 
-        {/* 주차별 M/S 바차트 (우리만) */}
-        <section className="dd-card">
-          <div className="dd-card__header">
-            <p className="dd-card__title">안국약품 주차별 M/S</p>
-          </div>
-          <div className="dd-card__body">
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart
-                data={weeks.map((week, wi) => ({
-                  week,
-                  'M/S (%)': me ? parseFloat((me.msPerWeek[wi] * 100).toFixed(2)) : 0,
-                }))}
-                margin={{ top: 4, right: 12, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#dce6f0" vertical={false} />
-                <XAxis dataKey="week" tick={{ fill: '#8fa3bb', fontSize: 11, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#8fa3bb', fontSize: 11, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
-                <Tooltip formatter={(v) => [`${v}%`, 'M/S']} />
-                <ReferenceLine y={me ? me.msTotal * 100 : 0} stroke="#8fa3bb" strokeDasharray="4 2" label={{ value: '평균', fill: '#8fa3bb', fontSize: 10 }} />
-                <Bar dataKey="M/S (%)" fill={MY_COLOR} radius={[4, 4, 0, 0]} maxBarSize={48} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
+          <KpiSection
+            {...kpi}
+            {...salesKpi}
+            currLabel={lcLabel}
+            prevLabel={pmLabel}
+            metricLabel={metricLabel}
+            showGR={currentDrug.showGR}
+          />
 
-        {/* 판매사 순위 테이블 */}
-        <section className="dd-card">
-          <div className="dd-card__header">
-            <p className="dd-card__title">판매사 순위 ({metricLabel} 기준)</p>
-            <span className="dd-mono dd-muted">전체 {vendors.length}개사</span>
+          <div className="ag-bottom-row">
+            <TrendChart
+              allWeeks={allWeeks}
+              vendorsSorted={vendorsSorted}
+              myVendor={myVendor}
+              metricLabel={metricLabel}
+            />
+            {currentDrug.showDonut && (
+              <ShareDonut
+                vendors={vendors}
+                myVendor={myVendor}
+                drugName={drugName}
+                lastWeekLabel={lastWeekLabel}
+                topN={currentDrug.topN}
+              />
+            )}
           </div>
-          <div className="dd-table-wrap">
-            <table className="dd-table">
-              <thead>
-                <tr>
-                  <th>순위</th>
-                  <th>판매사</th>
-                  {weeks.map(w => <th key={w}>{w}</th>)}
-                  <th>6주 합계</th>
-                  <th>평균 M/S</th>
-                  <th>전주대비</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vendors.map((v, rank) => {
-                  const lastMs   = v.msPerWeek[lastIdx] * 100;
-                  const prevMs   = prevIdx >= 0 ? v.msPerWeek[prevIdx] * 100 : null;
-                  const delta    = prevMs != null ? lastMs - prevMs : null;
-                  const isMe     = v.name === myVendor;
-                  return (
-                    <tr key={v.name} className={isMe ? 'dd-table__my-row' : ''}>
-                      <td className="rank">{rank + 1}</td>
-                      <td className="name">
-                        {isMe && <span className="dd-my-badge">우리</span>}
-                        {v.name}
-                      </td>
-                      {v.byWeek.map((val, wi) => (
-                        <td key={wi} className="val">{Math.round(val).toLocaleString()}</td>
-                      ))}
-                      <td className="val total">{Math.round(v.total).toLocaleString()}</td>
-                      <td className="pct">{(v.msTotal * 100).toFixed(1)}%</td>
-                      <td className={`pct ${delta != null ? pctClass(delta) : ''}`}>
-                        {delta != null ? `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}%p` : '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
 
-      </main>
+          <VendorTable
+            vendorsSorted={vendorsSorted}
+            allWeeks={allWeeks}
+            myVendor={myVendor}
+            metricLabel={metricLabel}
+            totalVendorCount={vendorsSorted.length}
+          />
+
+        </div>
+      </div>
     </div>
   );
 }

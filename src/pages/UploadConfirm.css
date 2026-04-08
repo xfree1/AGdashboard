@@ -1,0 +1,263 @@
+/* ── 제목 행: 타이틀 + 액션 버튼 ────────────────────── */
+
+.uc-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.uc-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* 파일명 표시 */
+.uc-filename {
+  display: inline-block;
+  margin-top: var(--space-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
+}
+
+/* ── 통계 바 ────────────────────────────────────────── */
+
+.uc-stats {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.uc-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  min-width: 120px;
+}
+
+.uc-stat__num {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  font-family: var(--font-sans);
+  line-height: 1;
+}
+
+.uc-stat__label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.3;
+}
+
+/* 신규 주차: 파랑 */
+.uc-stat--new .uc-stat__num {
+  color: var(--color-accent);
+}
+.uc-stat--new {
+  border-color: var(--color-accent-border);
+  background: var(--color-accent-dim);
+}
+
+/* 변경값: 기본(회색) / 있을 때 amber */
+.uc-stat--changed .uc-stat__num {
+  color: var(--color-text-muted);
+}
+.uc-stat--changed.uc-stat--has .uc-stat__num {
+  color: var(--color-warn);
+}
+.uc-stat--changed.uc-stat--has {
+  border-color: var(--color-warn-border);
+  background: var(--color-warn-dim);
+}
+
+/* 확인된 주차: 초록 */
+.uc-stat--ok .uc-stat__num {
+  color: var(--color-success);
+}
+.uc-stat--ok {
+  border-color: var(--color-success-border);
+  background: var(--color-success-dim);
+}
+
+/* ── 경고 패널 ──────────────────────────────────────── */
+
+.uc-warning {
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--color-warn-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-warn-light);
+  overflow: hidden;
+}
+
+.uc-warning__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-warn-border-light);
+  background: var(--color-warn-header-bg);
+}
+
+.uc-warning__icon {
+  color: var(--color-warn);
+  flex-shrink: 0;
+}
+
+.uc-warning__title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-warn-dark);
+}
+
+.uc-warning__list {
+  padding: var(--space-2) 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.uc-warning__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 6px var(--space-4);
+  font-size: var(--text-sm);
+  transition: background var(--transition-fast);
+}
+
+.uc-warning__item:hover {
+  background: var(--color-warn-subtle);
+}
+
+.uc-warning__vendor {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  min-width: 120px;
+}
+
+.uc-warning__week {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  min-width: 56px;
+}
+
+.uc-warning__diff {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+}
+
+.uc-warning__old {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.uc-warning__arrow {
+  color: var(--color-text-muted);
+}
+
+.uc-warning__new {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.uc-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.uc-badge--up {
+  background: var(--color-badge-up-bg);
+  color: var(--color-badge-up-text);
+}
+
+.uc-badge--down {
+  background: var(--color-badge-down-bg);
+  color: var(--color-badge-down-text);
+}
+
+.uc-warning__more {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ── 컬럼 페이지네이션 ──────────────────────────────── */
+
+.uc-col-nav-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+/* ── 테이블 헤더: 신규 주차 ─────────────────────────── */
+
+.uc-th--new {
+  background: var(--color-accent-dim) !important;
+  color: var(--color-accent) !important;
+  border-bottom-color: var(--color-accent-border) !important;
+}
+
+/* NEW 배지 */
+.uc-new-badge {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--color-accent);
+  background: var(--color-accent-bright);
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-bottom: 2px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* ── 테이블 셀: 신규 / 변경 ─────────────────────────── */
+
+.uc-td--new {
+  background: var(--color-accent-dim) !important;
+  color: var(--color-accent-dark) !important;
+}
+
+.preview-row--mine .uc-td--new {
+  background: var(--color-accent-bright) !important;
+}
+
+.uc-td--changed {
+  background: var(--color-warn-cell-bg) !important;
+  color: var(--color-warn-dark) !important;
+  cursor: help;
+}
+
+/* 셀 내부 방향 화살표 */
+.uc-cell-arrow {
+  display: inline-block;
+  font-size: 9px;
+  margin-left: 3px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.uc-cell-arrow--up   { color: var(--color-badge-up-text); }
+.uc-cell-arrow--down { color: var(--color-badge-down-text); }

@@ -1,53 +1,107 @@
-/**
- * drugs.js — 약 설정 파일
- *
- * 새 약 추가할 때 이 파일에만 항목 추가하면 됩니다.
- * 코드 수정 불필요.
- *
- * ingredient: 로우파일 성분명에 포함된 키워드 (소문자, 부분 매칭)
- *   - 여러 키워드를 AND 조건으로 쓰려면 배열로: ['ezetimibe', 'pitavastatin']
- *   - 단일 키워드: 'amlodipine'
- *
- * excludeIngredient: 이 키워드가 포함된 성분은 제외
- *   - 예: fenofibrate 복합제 제외
- *
- * myVendor: 안국약품 (우리 회사 판매사명, 로우파일 기준)
- *
- * metric: 'rx' = 처방건수, 'qty' = 처방량, 'both' = 둘 다
- *
- * topN: 경쟁사 상위 몇 개까지 차트에 표시할지
- */
-
 export const DRUGS = [
   {
     id: 'pevarojet',
+    dbId: 'eze_pita',
     name: '페바로젯',
     ingredient: ['ezetimibe', 'pitavastatin'],
     excludeIngredient: ['fenofibrate', 'fenofibric'],
     myVendor: '안국약품',
+    metric: 'qty',
+    topN: 5,
+    showGR: true,
+    showDonut: true,
+    // 데이터 확인법: 로우데이터 성분 컬럼에서 ezetimibe+pitavastatin AND 조건 필터, fenofibrate/fenofibric 제외, 판매사 기준 집계
+  },
+  {
+    id: 'levo_tension',
+    dbId: 'levo_tension',
+    name: '레보텐션',
+    ingredient: ['amlodipine'],
+    excludeIngredient: ['valsartan', 'olmesartan', 'losartan', 'telmisartan', 'irbesartan', 'candesartan', 'fimasartan'],
+    myVendor: '안국약품',
+    metric: 'qty',
+    topN: 5,
+    showGR: true,
+    showDonut: true,
+    // 데이터 확인법: 백데이터 탭 [레보텐션backdata], 제조사 컬럼 기준 집계, 처방량(qty) 사용
+  },
+  {
+    id: 'levo_saltan',
+    dbId: 'levo_saltan',
+    name: '레보살탄',
+    ingredient: ['amlodipine', 'valsartan'],
+    excludeIngredient: [],
+    myVendor: '안국약품',
+    metric: 'qty',
+    topN: 5,
+    showGR: true,
+    showDonut: true,
+    // 데이터 확인법: 백데이터 탭 [레보살탄backdata], 제조사 컬럼 기준 집계, 처방량(qty) 사용
+  },
+  {
+    id: 'sinectura',
+    dbId: 'sinectura',
+    name: '시네츄라',
+    ingredient: ['levodropropizine'],
+    excludeIngredient: [],
+    myVendor: '안국약품',
+    // 처방건수(rx) 사용 — 8대품목 중 유일하게 처방건수 기준 집계 (나머지는 처방량 qty)
     metric: 'rx',
     topN: 5,
+    showGR: true,
+    showDonut: true,
+    // 데이터 확인법: 미확인 — 확인 후 업데이트 필요
   },
-
-  // ── 추가 예시 (주석 해제 후 사용) ──────────────────────
-  // {
-  //   id: 'levotension',
-  //   name: '레보텐션',
-  //   ingredient: ['amlodipine'],
-  //   excludeIngredient: ['valsartan', 'olmesartan', 'losartan'],
-  //   myVendor: '안국약품',
-  //   metric: 'qty',
-  //   topN: 5,
-  // },
-  // {
-  //   id: 'levosaltan',
-  //   name: '레보살탄',
-  //   ingredient: ['amlodipine', 'valsartan'],
-  //   excludeIngredient: [],
-  //   myVendor: '안국약품',
-  //   metric: 'qty',
-  //   topN: 5,
-  // },
+  {
+    id: 'rupafin',
+    dbId: 'rupafin',
+    name: '루파핀',
+    ingredient: ['rupatadine'],
+    excludeIngredient: [],
+    myVendor: '안국약품',
+    metric: 'qty',
+    topN: 5,
+    showGR: true,
+    showDonut: true,
+    // 데이터 확인법: 미확인 — 확인 후 업데이트 필요
+  },
+  {
+    id: 'anycof',
+    dbId: 'anycof',
+    name: '애니코프',
+    ingredient: ['levodropropizine'],
+    excludeIngredient: [],
+    myVendor: '안국약품',
+    metric: 'qty',
+    topN: 5,
+    showGR: true,
+    showDonut: true,
+    // 데이터 확인법: 미확인 — 확인 후 업데이트 필요
+  },
+  {
+    id: 'retopra',
+    dbId: 'retopra',
+    name: '레토프라',
+    ingredient: ['rabeprazole'],
+    excludeIngredient: [],
+    myVendor: '안국약품',
+    metric: 'qty',
+    topN: 5,
+    showGR: true,
+    showDonut: true,
+    // 데이터 확인법: 미확인 — 확인 후 업데이트 필요
+  },
+  {
+    id: 'polax',
+    dbId: 'polax',
+    name: '폴락스',
+    ingredient: ['macrogol'],
+    excludeIngredient: [],
+    myVendor: '안국약품',
+    metric: 'qty',
+    topN: 5,
+    showGR: true,
+    showDonut: true,
+    // 데이터 확인법: 미확인 — 확인 후 업데이트 필요
+  },
 ];
-
-export const MY_VENDOR = '안국약품';

@@ -1,113 +1,48 @@
-/* KPICard.css */
+/* KPICard.css — KpiSection 내부 구조 전용 */
 
-.kpi-card {
-  background: var(--color-surface);
+/* 1행 — 라벨 + 아이콘 */
+.kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.kpi-header .kpi-label {
+  margin-bottom: 0;
+}
+
+.kpi-icon {
+  width: 20px;
+  height: 20px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  transition: border-color var(--transition-base), box-shadow var(--transition-base);
-  position: relative;
-  overflow: hidden;
-}
-
-.kpi-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: var(--color-accent);
-  opacity: 0;
-  transition: opacity var(--transition-base);
-}
-
-.kpi-card:hover {
-  border-color: var(--color-accent);
-  box-shadow: var(--shadow-glow);
-}
-
-.kpi-card:hover::before {
-  opacity: 1;
-}
-
-.kpi-card__label {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.kpi-card__value-row {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.kpi-card__value {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xl);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-
-.kpi-card__unit {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-}
-
-.kpi-card__change {
+  border-radius: 6px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  margin-top: var(--space-1);
-}
-
-.kpi-card__change--up .kpi-card__change-arrow,
-.kpi-card__change--up .kpi-card__change-value {
-  color: #16a34a;
-}
-
-.kpi-card__change--down .kpi-card__change-arrow,
-.kpi-card__change--down .kpi-card__change-value {
-  color: var(--color-danger);
-}
-
-.kpi-card__change--flat .kpi-card__change-arrow,
-.kpi-card__change--flat .kpi-card__change-value {
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--color-text-muted);
+  flex-shrink: 0;
+  align-self: center;
 }
 
-.kpi-card__change-label {
-  color: var(--color-text-muted);
+/* 2행 — 숫자 */
+.kpi-main {
+  margin-bottom: 14px;
 }
 
-.kpi-card--loading .kpi-card__value {
-  color: var(--color-text-muted);
+/* 3행 — 등락률 + 지난달 */
+.kpi-sub {
+  font-size: 13px;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
 }
 
-.kpi-card__skeleton {
-  height: 12px;
-  width: 80px;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(
-    90deg,
-    var(--color-surface-2) 25%,
-    var(--color-border-light) 50%,
-    var(--color-surface-2) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
+.sub-rate-down { color: var(--color-danger);  font-weight: 700; }
+.sub-rate-up   { color: var(--color-accent); font-weight: 700; }
+.sub-divider   { color: var(--color-border); }
+.sub-prev      { color: var(--color-text-muted); }

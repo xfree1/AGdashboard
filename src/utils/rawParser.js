@@ -120,11 +120,10 @@ export async function parseRawFile(file, drugConfig) {
 
         // ── 판매사별 요약 ──
         const vendors = Object.entries(vendorMap).map(([name, { byWeek }]) => {
-          const total = byWeek.reduce((s, v) => s + v, 0);
+          const total     = byWeek.reduce((s, v) => s + v, 0);
+          const mktTotal  = marketByWeek.reduce((s, v) => s + v, 0);
           const msPerWeek = byWeek.map((v, i) => marketByWeek[i] > 0 ? v / marketByWeek[i] : 0);
-          const msTotal = marketByWeek.reduce((s, v) => s + v, 0) > 0
-            ? total / marketByWeek.reduce((s, v) => s + v, 0)
-            : 0;
+          const msTotal   = mktTotal > 0 ? total / mktTotal : 0;
           return { name, byWeek, total, msPerWeek, msTotal, isMe: name === drugConfig.myVendor };
         }).sort((a, b) => b.total - a.total);
 
