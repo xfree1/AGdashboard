@@ -1,12 +1,5 @@
 /* DrugDashboard.css */
 
-/* ── Root layout ── */
-.ag-root {
-  display: flex;
-  min-height: 100vh;
-  background: var(--color-bg);
-}
-
 /* ── Sidebar ── */
 .ag-sidebar {
   width: var(--sidebar-width);
@@ -67,14 +60,6 @@
   flex-shrink: 0;
 }
 
-/* ── Main ── */
-.ag-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
 /* ── Topbar ── */
 .ag-topbar {
   height: var(--header-height);
@@ -104,14 +89,24 @@
 
 /* ── Content ── */
 .ag-content {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-2);
   overflow-y: auto;
   width: 100%;
+}
+.ag-content.ag-content--hidden { display: none; }
+
+.ag-dashboard-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
 }
 
 /* ── Product header ── */
@@ -175,6 +170,10 @@
   line-height: 1.15;
 }
 
+.ag-product-name__period {
+  font-weight: 400;
+}
+
 .ag-product-updated {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
@@ -184,8 +183,8 @@
 /* ── KPI ── */
 .kpi-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-4);
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
 }
 
 .kpi-card {
@@ -222,12 +221,55 @@
 }
 
 
-/* ── Bottom row ── */
-.ag-bottom-row {
+/* ── Middle grid (左: 차트+테이블 / 右: KPI+Donut) ── */
+.ag-mid-grid {
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: var(--space-4);
+  grid-template-columns: 1fr 440px;
+  gap: var(--space-2);
   align-items: stretch;
+}
+
+.ag-mid-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+}
+
+/* 통합 카드 (TrendChart + ChartDataTable) */
+.ag-combined-card {
+  flex: 1;
+}
+
+/* 좌측 차트 최소 높이 확보 */
+.ag-mid-left .ag-chart-wrap {
+  min-height: 320px;
+}
+
+.ag-mid-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ShareDonut이 KPI 아래 남은 공간을 채우도록 */
+.ag-mid-right .ag-card--donut {
+  flex: 1;
+}
+
+/* 우측 패널 KPI: 패딩·폰트 축소 */
+.ag-mid-right {
+  --kpi-value-size: 1.5rem;
+  --kpi-label-size: 0.875rem;
+}
+
+.ag-mid-right .kpi-card {
+  padding: var(--space-5) var(--space-5);
+}
+
+/* 서브텍스트 제거 후 도넛 헤더 여백 축소 */
+.ag-card--donut .ag-card__header {
+  margin-bottom: 10px;
 }
 
 /* ── Card ── */
@@ -252,6 +294,52 @@
   font-size: var(--text-lg);
   font-weight: 700;
   color: var(--text);
+}
+
+.ag-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ag-info-icon {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.ag-info-icon::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  white-space: nowrap;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 16px rgba(15, 31, 61, 0.15);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  z-index: 100;
+}
+
+.ag-info-icon:hover::after {
+  opacity: 1;
 }
 
 .ag-card__sub {
@@ -346,7 +434,7 @@
 }
 
 .ag-trend-summary__ms-tag {
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 700;
   color: var(--color-accent);
   background: var(--color-accent-dim);
@@ -411,7 +499,7 @@
 }
 
 .ag-chart-legend__axis-tag {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -445,25 +533,41 @@
   min-height: 220px;
 }
 
+.ag-chart-wrap svg:focus,
+.ag-chart-wrap svg:focus-visible {
+  outline: none;
+}
+
 
 /* ── Donut ── */
 .ag-card--donut { min-width: 0; }
 
-.ag-donut-wrap {
+/* 도넛 + 범례 좌우 배치 */
+.ag-donut-body {
   display: flex;
-  justify-content: center;
-  margin-bottom: 18px;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-4);
+  flex: 1;
 }
 
 .ag-donut-chart {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+}
+
+.ag-donut-chart__inner {
   position: relative;
-  width: 200px;
-  height: 200px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 200px;
+  aspect-ratio: 1 / 1;
 }
 
 /* Recharts SVG 기본 테두리 제거 */
-.ag-donut-chart .recharts-surface {
+.ag-donut-chart__inner .recharts-surface {
   overflow: visible;
 }
 
@@ -495,6 +599,8 @@
   display: flex;
   flex-direction: column;
   gap: 11px;
+  flex: 1;
+  min-width: 0;
 }
 
 .ag-legend-item {
@@ -531,15 +637,21 @@
   color: var(--text);
 }
 
-/* ── Table ── */
+.ag-legend-name--me {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.ag-legend-val--me {
+  font-weight: 700;
+}
+
+/* ── Table — ag-table 베이스 사용, dd-table은 오버라이드만 ── */
 .dd-table-wrap { overflow-x: auto; }
 .dd-table-wrap--noscroll { overflow-x: visible; }
 
 .dd-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-sm);
-  white-space: nowrap;
+  /* ag-table 베이스 상속 — 추가 오버라이드 없음 */
 }
 
 /* 8컬럼 고정 레이아웃 (순위 + 판매사 + 6개월 + M/S + G/R) */
@@ -553,36 +665,23 @@
 .dd-table--fixed .col-gr    { width: 9%; }
 .dd-table--fixed td.name    { overflow: hidden; text-overflow: ellipsis; }
 
-/* th/td 패딩 통일 → 헤더·셀 정렬 일치 */
-.dd-table th,
-.dd-table td {
-  padding: 10px;
-}
-
-.dd-table th {
-  text-align: center;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.04em;
+/* th/td — .ag-table th(0-1-1)보다 높은 명시도(0-2-1)로 오버라이드 */
+.dd-table.ag-table th {
   color: var(--color-text-muted);
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
 }
-
-.dd-table td {
-  border-bottom: 1px solid var(--color-border);
+.dd-table.ag-table td {
   color: var(--color-text-secondary);
 }
 
 .dd-table tbody tr:last-child td { border-bottom: none; }
-.dd-table tbody tr:hover td { background: var(--color-bg); }
+.dd-table tbody tr:hover td { background: var(--table-hover-bg); }
 
+/* 내 행 — ag-tr--my 로 통합됨, __my-row 는 하위 호환 */
 .dd-table__my-row td {
-  background: var(--color-accent-dim);
-  color: var(--text);
+  background: var(--table-my-bg);
   font-weight: 500;
 }
-.dd-table__my-row:hover td { background: rgba(40,140,250,0.08); }
+.dd-table__my-row:hover td { background: var(--color-accent-mid); }
 
 /* 순위: th·td 동일 패딩으로 정렬 맞춤 */
 .dd-table th.rank,
@@ -591,38 +690,26 @@
 .dd-table th.val,
 .dd-table td.val   { font-variant-numeric: tabular-nums; text-align: center; }
 .dd-table th.total,
-.dd-table td.total { font-weight: 600; color: var(--text); }
+.dd-table td.total { font-weight: 600; }
 .dd-table th.pct,
 .dd-table td.pct   { font-size: var(--text-xs); text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
-.dd-table td.pct.pos { color: var(--color-accent); }
-.dd-table td.pct.neg { color: var(--color-danger); }
-.dd-table td.pos     { color: var(--color-accent); }
-.dd-table td.neg     { color: var(--color-danger); }
+.dd-table td.pct.pos { color: var(--table-diff-up); }
+.dd-table td.pct.neg { color: var(--table-diff-down); }
+.dd-table td.pos     { color: var(--table-diff-up); }
+.dd-table td.neg     { color: var(--table-diff-down); }
 
 .ms-sub {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
   margin-top: 2px;
 }
-.ms-sub.pos { color: var(--color-accent); }
-.ms-sub.neg { color: var(--color-danger); }
+.ms-sub.pos { color: var(--table-diff-up); }
+.ms-sub.neg { color: var(--table-diff-down); }
 
-.mkt-gr-cell {
-  background: var(--color-bg) !important;
-  border-left: none !important;
-  color: var(--color-bluegrey-text);
-  text-align: center;
-}
-.mkt-gr-value {
-  font-weight: 600;
-  color: var(--color-danger);
-  margin-left: var(--space-1);
-}
-
-/* ── 당월 그룹 (마지막 월 + M/S + G/R) ── */
+/* ── 당월 그룹 (마지막 월 + M/S + G/R) — ag-col--cur 로 통합됨 ── */
 .dd-table th.col-cur,
 .dd-table td.col-cur {
-  background: var(--color-col-cur-bg);
+  background: var(--table-cur-col-bg);
   padding-left: var(--space-2);
   padding-right: var(--space-2);
 }
@@ -630,17 +717,16 @@
   background: var(--color-col-cur-my-bg);
 }
 
-/* ── Total 행 ── */
+/* ── Total 행 — ag-tr--total 로 통합됨, __total-row 는 하위 호환 ── */
 .dd-table__total-row td {
-  background: var(--color-bg);
-  border-top: 2px solid var(--color-border);
+  background: var(--table-total-bg);
+  border-top: 2px solid var(--table-border);
   font-weight: 600;
-  color: var(--text);
 }
 .dd-table__total-row td.col-cur {
   background: var(--color-col-cur-total-bg);
 }
-.dd-table__total-row:hover td         { background: var(--color-bg); }
+.dd-table__total-row:hover td         { background: var(--table-total-bg); }
 .dd-table__total-row:hover td.col-cur { background: var(--color-col-cur-total-bg); }
 
 .dd-my-badge {
@@ -656,8 +742,8 @@
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
-  .ag-bottom-row { grid-template-columns: 1fr; }
-  .kpi-row       { grid-template-columns: 1fr 1fr; }
+  .ag-mid-grid { grid-template-columns: 1fr; }
+  .kpi-row     { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 640px) {
@@ -665,3 +751,4 @@
   .ag-content { padding: var(--space-4); }
   .kpi-row    { grid-template-columns: 1fr; }
 }
+

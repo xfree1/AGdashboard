@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DRUGS } from '../config/drugs';
 import { supabase } from '../lib/supabase';
@@ -44,26 +44,74 @@ export default function DataPreview() {
   const drug = DRUGS.find(d => d.id === drugId);
 
   const metric = drug?.metric ?? 'qty';
-  const [activeTab, setActiveTab] = useState('prescription');  // 'prescription' | 'sales'
+  const [activeTab, setActiveTab] = useState('prescription');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [weeks, setWeeks] = useState([]);
   const [vendorRows, setVendorRows] = useState([]);
-  const [colEnd, setColEnd] = useState(0);
   const [visibleCount, setVisibleCount] = useState(15);
   const [salesRows, setSalesRows] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
   const [salesError, setSalesError] = useState('');
-  const [salesColEnd, setSalesColEnd] = useState(0);
   const [drugDropOpen, setDrugDropOpen] = useState(false);
   const { triggered, fire } = useUnderlineSlide();
 
-  const COLS_PER_PAGE = 8;
   const ROWS_PER_PAGE = 15;
+
+  // ── 스무스 스크롤 (WeeklyPage 방식) ──
+  const tableWrapRef    = useRef(null);
+  const scrollTargetRef = useRef(null);
+  const rafRef          = useRef(null);
+  const animateRef      = useRef(null);
+
+  // animateRef를 매 렌더마다 갱신해서 항상 최신 refs를 참조
+  animateRef.current = () => {
+    const el = tableWrapRef.current;
+    if (!el || scrollTargetRef.current === null) { rafRef.current = null; return; }
+
+    const target  = scrollTargetRef.current;
+    const current = el.scrollLeft;
+    const diff    = target - current;
+
+    if (Math.abs(diff) < 0.5) {
+      el.scrollLeft         = target;
+      scrollTargetRef.current = null;
+      rafRef.current          = null;
+      return;
+    }
+
+    el.scrollLeft  = current + diff * 0.18;
+    rafRef.current = requestAnimationFrame(() => animateRef.current());
+  };
+
+  const startScroll = useCallback((targetLeft) => {
+    const el = tableWrapRef.current;
+    if (!el) return;
+    scrollTargetRef.current = Math.max(0, Math.min(el.scrollWidth - el.clientWidth, targetLeft));
+    if (!rafRef.current) {
+      rafRef.current = requestAnimationFrame(() => animateRef.current());
+    }
+  }, []);
+
+  const handleWheel = useCallback((e) => {
+    const delta = Math.abs(e.deltaX) >= Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (Math.abs(delta) < 1) return;
+    e.preventDefault();
+    const el = tableWrapRef.current;
+    if (!el) return;
+    startScroll((scrollTargetRef.current ?? el.scrollLeft) + delta);
+  }, [startScroll]);
+
+  // 휠 리스너 부착 (처방/매출 로딩 완료 후 div가 나타날 때마다 재부착)
+  useEffect(() => {
+    const el = tableWrapRef.current;
+    if (!el) return;
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [handleWheel, loading, salesLoading]);
 
   useEffect(() => {
     if (!drug) return;
-
     let cancelled = false;
 
     async function load() {
@@ -71,10 +119,8 @@ export default function DataPreview() {
       setError('');
       try {
         const raw = await fetchAllRows(drug.dbId);
-
         if (cancelled) return;
 
-        // vendor × week_id 집계
         const map = {};
         const weekSet = new Set();
 
@@ -89,7 +135,7 @@ export default function DataPreview() {
           map[vendor][weekId].qty += row.qty_value ?? 0;
         });
 
-        const allWeeks = [...weekSet].sort();
+        const allWeeks = [...weekSet].sort().reverse();
 
         const rows = Object.entries(map)
           .map(([vendor, data]) => {
@@ -105,7 +151,6 @@ export default function DataPreview() {
 
         setWeeks(allWeeks);
         setVendorRows(rows);
-        setColEnd(allWeeks.length); // 가장 최근 8주가 끝에 오도록
       } catch (e) {
         if (!cancelled) setError(e.message);
       } finally {
@@ -115,6 +160,7 @@ export default function DataPreview() {
 
     load();
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drug, metric]);
 
   // 매출 탭 선택 시 로드
@@ -123,7 +169,7 @@ export default function DataPreview() {
     setSalesLoading(true);
     setSalesError('');
     loadMonthlySales(drug.dbId)
-      .then(data => { setSalesRows(data); setSalesColEnd(data.length); setSalesLoading(false); })
+      .then(data => { setSalesRows(data); setSalesLoading(false); })
       .catch(e  => { setSalesError(e.message); setSalesLoading(false); });
   }, [activeTab, drug]);
 
@@ -132,9 +178,6 @@ export default function DataPreview() {
   }
 
   const fmt = v => Math.round(v ?? 0).toLocaleString();
-
-  const startIdx = Math.max(0, colEnd - COLS_PER_PAGE);
-  const visibleWeeks = weeks.slice(startIdx, colEnd);
 
   const heading = (
     <div className="preview-heading">
@@ -187,36 +230,6 @@ export default function DataPreview() {
             매출
           </button>
         </div>
-        <div className="preview-tabbar-right">
-          {activeTab === 'prescription' && (
-            <div className="preview-col-nav">
-              <button
-                className="preview-col-btn"
-                onClick={() => setColEnd(e => Math.max(COLS_PER_PAGE, e - COLS_PER_PAGE))}
-                disabled={startIdx === 0 || loading}
-              >← 이전</button>
-              <button
-                className="preview-col-btn"
-                onClick={() => setColEnd(e => Math.min(weeks.length, e + COLS_PER_PAGE))}
-                disabled={colEnd >= weeks.length || loading}
-              >다음 →</button>
-            </div>
-          )}
-          {activeTab === 'sales' && !salesLoading && !salesError && salesRows.length > 0 && (
-            <div className="preview-col-nav">
-              <button
-                className="preview-col-btn"
-                onClick={() => setSalesColEnd(e => Math.max(COLS_PER_PAGE, e - COLS_PER_PAGE))}
-                disabled={salesColEnd <= COLS_PER_PAGE}
-              >← 이전</button>
-              <button
-                className="preview-col-btn"
-                onClick={() => setSalesColEnd(e => Math.min(salesRows.length, e + COLS_PER_PAGE))}
-                disabled={salesColEnd >= salesRows.length}
-              >다음 →</button>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* 매출 탭 콘텐츠 */}
@@ -232,34 +245,30 @@ export default function DataPreview() {
           {!salesLoading && !salesError && salesRows.length === 0 && (
             <div className="preview-empty">업로드된 매출 데이터가 없습니다.</div>
           )}
-          {!salesLoading && !salesError && salesRows.length > 0 && (() => {
-            const salesStartIdx = Math.max(0, salesColEnd - COLS_PER_PAGE);
-            const visibleSales = salesRows.slice(salesStartIdx, salesColEnd);
-            return (
-              <div className="preview-table-wrap">
-                <table className="preview-table preview-table--sales">
-                  <thead>
-                    <tr>
-                      <th className="preview-th preview-th--sales-label">구분</th>
-                      {visibleSales.map(({ month_id }) => (
-                        <th key={month_id} className="preview-th preview-th--sales-month">{month_id}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="preview-row preview-row--mine">
-                      <td className="preview-td preview-td--sales-label">처방조제액(원)</td>
-                      {visibleSales.map(({ month_id, sales }) => (
-                        <td key={month_id} className="preview-td preview-td--value">
-                          {Math.round(sales ?? 0).toLocaleString()}
-                        </td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            );
-          })()}
+          {!salesLoading && !salesError && salesRows.length > 0 && (
+            <div className="preview-table-wrap" ref={tableWrapRef}>
+              <table className="preview-table ag-table">
+                <thead>
+                  <tr>
+                    <th className="preview-th preview-th--vendor">구분</th>
+                    {salesRows.map(({ month_id }) => (
+                      <th key={month_id} className="preview-th preview-th--week">{month_id}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="preview-row preview-row--mine">
+                    <td className="preview-td preview-td--vendor">{drug.myVendor}</td>
+                    {salesRows.map(({ month_id, sales }) => (
+                      <td key={month_id} className="preview-td preview-td--value">
+                        {Math.round(sales ?? 0).toLocaleString()}
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       )}
 
@@ -278,38 +287,40 @@ export default function DataPreview() {
       )}
 
       {activeTab === 'prescription' && !loading && !error && weeks.length > 0 && (
-        <div className="preview-table-wrap">
-          <table className="preview-table">
-            <thead>
-              <tr>
-                <th className="preview-th preview-th--vendor">제조사</th>
-                {visibleWeeks.map(w => (
-                  <th key={w} className="preview-th preview-th--week">{fmtWeekLabel(w)}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {vendorRows.slice(0, visibleCount).map(({ vendor, data }) => (
-                <tr
-                  key={vendor}
-                  className={`preview-row${vendor === drug.myVendor ? ' preview-row--mine' : ''}`}
-                >
-                  <td className="preview-td preview-td--vendor">{vendor}</td>
-                  {visibleWeeks.map(w => {
-                    const val = data[w]?.[metric] ?? 0;
-                    return (
-                      <td
-                        key={w}
-                        className={`preview-td preview-td--value${val === 0 ? ' preview-td--zero' : ''}`}
-                      >
-                        {fmt(val)}
-                      </td>
-                    );
-                  })}
+        <>
+          <div className="preview-table-wrap" ref={tableWrapRef}>
+            <table className="preview-table ag-table">
+              <thead>
+                <tr>
+                  <th className="preview-th preview-th--vendor">제조사</th>
+                  {weeks.map(w => (
+                    <th key={w} className="preview-th preview-th--week">{fmtWeekLabel(w)}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {vendorRows.slice(0, visibleCount).map(({ vendor, data }, idx) => (
+                  <tr
+                    key={vendor}
+                    className={`preview-row${vendor === drug.myVendor ? ' preview-row--mine' : ''}${idx % 2 === 1 ? ' ag-tr--zebra' : ''}`}
+                  >
+                    <td className="preview-td preview-td--vendor">{vendor}</td>
+                    {weeks.map(w => {
+                      const val = data[w]?.[metric] ?? 0;
+                      return (
+                        <td
+                          key={w}
+                          className={`preview-td preview-td--value${val === 0 ? ' preview-td--zero' : ''}`}
+                        >
+                          {fmt(val)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {vendorRows.length > ROWS_PER_PAGE && (
             <div className="preview-row-ctrl">
               {visibleCount < vendorRows.length ? (
@@ -329,7 +340,7 @@ export default function DataPreview() {
               )}
             </div>
           )}
-        </div>
+        </>
       )}
     </AdminLayout>
   );

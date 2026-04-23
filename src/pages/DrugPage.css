@@ -1,0 +1,186 @@
+/* ── 첫 로드 스켈레톤 ───────────────────────── */
+@keyframes drug-shimmer {
+  0%   { background-position: -700px 0; }
+  100% { background-position:  700px 0; }
+}
+
+.drug-skeleton {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.drug-sk-bar {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--color-border) 25%,
+    var(--color-border-light) 50%,
+    var(--color-border) 75%
+  );
+  background-size: 700px 100%;
+  animation: drug-shimmer 1.4s infinite linear;
+}
+
+.drug-sk-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.drug-sk-bar--title { height: 22px; width: 240px; }
+.drug-sk-bar--sub   { height: 14px; width: 140px; }
+
+.drug-sk-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+.drug-sk-kpi {
+  height: 88px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    90deg,
+    var(--color-border) 25%,
+    var(--color-border-light) 50%,
+    var(--color-border) 75%
+  );
+  background-size: 700px 100%;
+  animation: drug-shimmer 1.4s infinite linear;
+}
+.drug-sk-kpi:nth-child(2) { animation-delay: 0.08s; }
+.drug-sk-kpi:nth-child(3) { animation-delay: 0.16s; }
+.drug-sk-kpi:nth-child(4) { animation-delay: 0.24s; }
+
+.drug-sk-chart {
+  height: 240px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    90deg,
+    var(--color-border) 25%,
+    var(--color-border-light) 50%,
+    var(--color-border) 75%
+  );
+  background-size: 700px 100%;
+  animation: drug-shimmer 1.4s infinite linear;
+  animation-delay: 0.1s;
+}
+
+.drug-sk-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.drug-sk-table-row {
+  height: 36px;
+  background: linear-gradient(
+    90deg,
+    var(--color-border) 25%,
+    var(--color-border-light) 50%,
+    var(--color-border) 75%
+  );
+  background-size: 700px 100%;
+  animation: drug-shimmer 1.4s infinite linear;
+}
+.drug-sk-table-row:nth-child(1) { animation-delay: 0.00s; }
+.drug-sk-table-row:nth-child(2) { animation-delay: 0.06s; }
+.drug-sk-table-row:nth-child(3) { animation-delay: 0.12s; }
+.drug-sk-table-row:nth-child(4) { animation-delay: 0.18s; }
+.drug-sk-table-row:nth-child(5) { animation-delay: 0.24s; }
+.drug-sk-table-row:nth-child(6) { animation-delay: 0.30s; }
+
+.upload-spinner-wrap {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  background: var(--color-bg);
+}
+
+.upload-spinner-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.upload-zone__spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.upload-error {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-dim);
+  border: 1px solid rgba(239,68,68,0.25);
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── 로딩 바 (약 전환 시) ── */
+.upload-loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-accent);
+  z-index: 1000;
+  animation: loadbar 1.2s ease-in-out infinite;
+}
+
+@keyframes loadbar {
+  0%   { transform: scaleX(0); transform-origin: left; opacity: 1; }
+  60%  { transform: scaleX(0.75); transform-origin: left; opacity: 1; }
+  100% { transform: scaleX(1); transform-origin: left; opacity: 0; }
+}
+
+/* ── 에러 토스트 ── */
+.upload-error-toast {
+  position: fixed;
+  top: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popup);
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  max-width: 480px;
+}
+
+.upload-error-toast__close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0 var(--space-1);
+  font-size: var(--text-base);
+  margin-left: var(--space-2);
+  line-height: 1;
+}
+
+.upload-error-toast__close:hover {
+  color: var(--color-text-primary);
+}

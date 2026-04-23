@@ -1,0 +1,449 @@
+/* ================================================
+   WeeklyPage — 8대품목 Weekly 종합병원 현황
+   ================================================ */
+
+.wt-page {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* ── 페이지 헤더 ─────────────────────────────── */
+.wt-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.wt-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.wt-title {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.wt-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.wt-others-note {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin: var(--space-2) 0 0;
+}
+
+
+/* ── 섹션 블록 ──────────────────────────────── */
+.wt-section {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--space-6);
+}
+
+.wt-section-header {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.wt-section-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.wt-section-note {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+/* ── 테이블 래퍼 ────────────────────────────── */
+.wt-wrap {
+  overflow-x: auto;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-3);
+  scrollbar-width: none;       /* Firefox */
+  -ms-overflow-style: none;    /* IE/Edge */
+}
+.wt-wrap::-webkit-scrollbar {
+  display: none;               /* Chrome/Safari */
+}
+
+/* ── 컬럼 너비 고정 ──
+   sticky left 오프셋:
+     mfr       = 180px
+     stat-s1   = 180 + 110 = 290px
+     stat-s2   = 290 + 96  = 386px  ← last
+── */
+/* 고정 컬럼 — 항상 동일한 너비 */
+col.wt-col-product { width: 180px; }
+col.wt-col-mfr     { width: 110px; }
+col.wt-col-stat    { width: 96px;  }
+/* 월/주차 컬럼 — 고정 너비 → 테이블이 자연스럽게 가로로 넓어짐 */
+col.wt-col-week    { width: 110px; }
+col.wt-col-avg     { width: 110px; }
+
+/* ── 테이블 ─────────────────────────────────── */
+.wt-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: max-content;
+  min-width: 1500px;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+}
+
+/* ── 헤더 셀 공통 ───────────────────────────── */
+.wt-th {
+  padding: 8px 6px;
+  background: var(--color-gray-blue-200);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  text-align: center;
+  vertical-align: middle;
+}
+.wt-th:last-child { border-right: none; }
+
+/* 고정 컬럼 (제품/제조사) sticky */
+.wt-th--fixed {
+  position: sticky;
+  background: var(--color-gray-blue-300);
+  z-index: 2;
+  text-align: center;
+  padding-left: 0;
+  border-right: none;
+  box-shadow: inset -1px 0 0 var(--color-border);
+}
+.wt-th--product { left: 0;     }
+.wt-th--mfr     { left: 180px; }
+
+/* 고정 비교 컬럼 (전주대비/전월대비) sticky */
+.wt-th--stat-sticky {
+  position: sticky;
+  background: var(--color-gray-blue-300);
+  z-index: 2;
+  border-right: none;
+  box-shadow: inset -1px 0 0 var(--color-border);
+}
+.wt-stat-s1 { left: 290px; }
+.wt-stat-s2 { left: 386px; }
+
+/* 비교 컬럼 오른쪽 구분선 */
+.wt-th.wt-stat-last {
+  box-shadow: inset -1px 0 0 var(--color-border-strong) !important;
+}
+.wt-td.wt-stat-last {
+  border-right: none !important;
+  box-shadow: inset -1px 0 0 var(--color-border-strong) !important;
+}
+
+/* 당월 헤더 — 기존 헤더와 동일 (별도 강조 없음) */
+
+
+/* 월 그룹 헤더 (접힌 상태) */
+.wt-th--month {
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  border-right: 1px solid var(--color-border);
+}
+.wt-th--month:hover {
+  background: var(--color-accent-dim);
+  color: var(--color-accent);
+}
+
+/* 주차 날짜 헤더 (펼쳐진 상태) — 기본 wt-th 스타일 그대로 */
+.wt-th--week-date {}
+
+/* 주차 셀 — 클릭으로 접기 */
+.wt-th--week-toggle {
+  cursor: pointer;
+  user-select: none;
+  color: var(--color-accent);
+  font-weight: 600;
+  background: var(--color-accent-dim);
+}
+.wt-th--week-toggle:hover {
+  background: var(--color-accent-dim);
+  opacity: 0.8;
+}
+
+/* 월평균 헤더 */
+.wt-th--avg-label {
+  background: var(--color-border);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  border-right: 1px solid var(--color-border);
+}
+
+/* 전주/전월 헤더 */
+.wt-th--stat {
+  text-align: center;
+}
+
+.wt-month-arrow {
+  margin-left: 3px;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* ── 바디 셀 공통 ───────────────────────────── */
+.wt-td {
+  padding: 6px 6px;
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  white-space: nowrap;
+  vertical-align: middle;
+  text-align: right;
+  font-size: var(--text-sm);
+  font-weight: 300;
+  color: var(--color-text-dark);
+}
+.wt-td:last-child { border-right: none; }
+
+/* 고정 컬럼 sticky */
+.wt-td--product,
+.wt-td--mfr {
+  position: sticky;
+  background: var(--color-surface);
+  text-align: left;
+  padding-left: var(--space-2);
+  z-index: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-right: none;
+  box-shadow: inset -1px 0 0 var(--color-border);
+}
+.wt-td--product { left: 0;     font-weight: 600; }
+.wt-td--mfr     { left: 180px; font-weight: 600; }
+
+/* 비교 컬럼 sticky */
+.wt-td--stat-sticky {
+  position: sticky;
+  background: var(--color-surface);
+  z-index: 1;
+  text-align: center;
+  border-right: none;
+  box-shadow: inset -1px 0 0 var(--color-border);
+}
+
+/* 주차 값 셀 — 기본 wt-td 스타일 그대로 */
+.wt-td--week-val {}
+
+/* 월평균 셀 */
+.wt-td--avg {
+  background: var(--color-border-light);
+  border-right: 1px solid var(--color-border);
+  font-weight: 400;
+}
+
+/* 전주/전월 셀 */
+.wt-td--stat {
+  font-weight: 600;
+}
+
+/* 증감 색상 */
+.wt-diff--up   { color: var(--color-success); }
+.wt-diff--down { color: var(--color-danger); }
+
+/* ── 행 타입별 ──────────────────────────────── */
+
+/* normal 행 — 옅은 파랑 배경 */
+.wt-tr--normal .wt-td {
+  background: var(--color-row-normal-bg);
+}
+.wt-tr--normal .wt-td--product,
+.wt-tr--normal .wt-td--mfr,
+.wt-tr--normal .wt-td--stat-sticky {
+  background: var(--color-row-normal-bg) !important;
+}
+/* 월 평균(접힌 탭) 셀 → 흰색 */
+.wt-tr--normal .wt-td--avg,
+.wt-tr--others .wt-td--avg {
+  background: var(--color-surface);
+}
+
+/* 안국약품 강조 */
+.wt-tr--ankuk .wt-td {
+  background: var(--color-highlight);
+}
+.wt-tr--ankuk .wt-td--product,
+.wt-tr--ankuk .wt-td--mfr,
+.wt-tr--ankuk .wt-td--stat-sticky {
+  background: var(--color-highlight) !important;
+}
+.wt-tr--ankuk .wt-td--avg {
+  background: var(--color-highlight);
+  font-weight: 600;
+}
+
+/* Others / 전체 — 제품·제조사 병합 셀 중앙 정렬 */
+.wt-td--product-span {
+  text-align: center;
+  padding-left: 0;
+}
+
+/* 전체 행 */
+.wt-tr--total .wt-td {
+  background: var(--color-gray-blue-200);
+  font-weight: 300;
+  color: var(--color-text-dark);
+  border-top: 1px solid var(--color-border);
+}
+.wt-tr--total .wt-td--product,
+.wt-tr--total .wt-td--mfr,
+.wt-tr--total .wt-td--stat-sticky {
+  background: var(--color-surface-2) !important;
+}
+.wt-tr--total .wt-td--avg {
+  background: var(--color-surface-2);
+  font-weight: 300;
+}
+.wt-tr--total .wt-td--week-val,
+.wt-tr--others .wt-td--week-val {
+  background: var(--color-row-normal-bg);
+}
+
+/* 당월 바디 셀 — wt-td--avg 뒤에 위치해야 cascade에서 이김
+   ankuk/total은 specificity(0,2,1)이 더 높아서 자동으로 우선함 */
+.wt-td--current {
+  background: var(--color-col-cur-bg);
+}
+
+/* 호버 */
+.wt-tr--normal:hover .wt-td {
+  background: var(--color-col-cur-bg);
+}
+.wt-tr--normal:hover .wt-td--product,
+.wt-tr--normal:hover .wt-td--mfr,
+.wt-tr--normal:hover .wt-td--stat-sticky {
+  background: var(--color-col-cur-bg) !important;
+}
+.wt-tr--normal:hover .wt-td--avg {
+  background: var(--color-surface-2);
+}
+.wt-tr--others:hover .wt-td {
+  background: var(--color-surface-2);
+}
+.wt-tr--others:hover .wt-td--product,
+.wt-tr--others:hover .wt-td--mfr,
+.wt-tr--others:hover .wt-td--stat-sticky {
+  background: var(--color-surface-2) !important;
+}
+
+/* ── 로딩 / 빈 상태 ─────────────────────────── */
+.wt-empty {
+  padding: var(--space-12);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ── 스켈레톤 로더 ──────────────────────────── */
+@keyframes wt-shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+
+.wt-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.wt-skeleton-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.wt-skeleton-title {
+  height: 18px;
+  width: 220px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--color-border) 25%,
+    var(--color-border-light) 50%,
+    var(--color-border) 75%
+  );
+  background-size: 600px 100%;
+  animation: wt-shimmer 1.4s infinite linear;
+}
+
+.wt-skeleton-table {
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.wt-skeleton-row {
+  display: flex;
+  height: 36px;
+  border-bottom: 1px solid var(--color-border);
+}
+.wt-skeleton-row:last-child { border-bottom: none; }
+
+.wt-skeleton-row--header .wt-skeleton-cell {
+  background: var(--color-gray-blue-200);
+}
+
+.wt-skeleton-cell {
+  flex: 1;
+  border-right: 1px solid var(--color-border);
+  background: linear-gradient(
+    90deg,
+    var(--color-border-light) 25%,
+    var(--color-surface) 50%,
+    var(--color-border-light) 75%
+  );
+  background-size: 600px 100%;
+  animation: wt-shimmer 1.4s infinite linear;
+}
+.wt-skeleton-cell:last-child { border-right: none; }
+
+/* 셀 너비 편차로 테이블처럼 보이게 */
+.wt-skeleton-cell:nth-child(1) { flex: 2.2; }
+.wt-skeleton-cell:nth-child(2) { flex: 1.3; }
+.wt-skeleton-cell:nth-child(3) { flex: 1; }
+.wt-skeleton-cell:nth-child(4) { flex: 1; }
+.wt-skeleton-cell:nth-child(5) { flex: 1.2; }
+.wt-skeleton-cell:nth-child(6) { flex: 1.2; }
+.wt-skeleton-cell:nth-child(7) { flex: 1.2; }
+.wt-skeleton-cell:nth-child(8) { flex: 1.2; }
+
+/* 각 행마다 shimmer 위상 살짝 어긋나게 */
+.wt-skeleton-row:nth-child(2)  .wt-skeleton-cell { animation-delay: 0.05s; }
+.wt-skeleton-row:nth-child(3)  .wt-skeleton-cell { animation-delay: 0.10s; }
+.wt-skeleton-row:nth-child(4)  .wt-skeleton-cell { animation-delay: 0.15s; }
+.wt-skeleton-row:nth-child(5)  .wt-skeleton-cell { animation-delay: 0.20s; }
+.wt-skeleton-row:nth-child(6)  .wt-skeleton-cell { animation-delay: 0.25s; }
+.wt-skeleton-row:nth-child(7)  .wt-skeleton-cell { animation-delay: 0.30s; }
+.wt-skeleton-row:nth-child(8)  .wt-skeleton-cell { animation-delay: 0.35s; }
+.wt-skeleton-row:nth-child(9)  .wt-skeleton-cell { animation-delay: 0.40s; }
+.wt-skeleton-row:nth-child(10) .wt-skeleton-cell { animation-delay: 0.45s; }

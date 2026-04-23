@@ -1,4 +1,99 @@
 /* 구분선 위 heading 영역 — 모든 관리자 페이지에서 동일한 높이 고정 */
+/* ── 애니코프 두 번째 파일 요청 모달 ────────────────── */
+
+.anycof-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.anycof-modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 420px;
+  max-width: calc(100vw - var(--space-8));
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-family: var(--font-sans);
+}
+
+.anycof-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.anycof-modal__title {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.anycof-modal__close {
+  background: none;
+  border: none;
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: var(--space-1);
+  line-height: 1;
+}
+
+.anycof-modal__close:hover {
+  color: var(--color-text-primary);
+}
+
+.anycof-modal__desc {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.anycof-modal__dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-6) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.anycof-modal__dropzone:hover,
+.anycof-modal__dropzone:focus {
+  border-color: var(--color-accent);
+  background: var(--color-accent-dim);
+  color: var(--color-accent);
+}
+
+.anycof-modal__dropzone--loading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.anycof-modal__err {
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+  background: var(--color-danger-dim);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+/* ── 기존 스타일 ─────────────────────────────────────── */
+
 .admin-head {
   height: 130px;
   flex-shrink: 0;
@@ -165,43 +260,69 @@
 }
 
 .upload-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-sm);
+  /* ag-table 베이스 상속 */
 }
 
-/* Head */
-.upload-th {
+/* Head — .ag-table th(0-1-1)보다 높은 명시도(0-2-1)로 오버라이드 */
+.upload-table.ag-table th {
   background: var(--color-surface-2);
   padding: 11px var(--space-4);
   text-align: left;
-  font-size: var(--text-xs);
-  font-weight: 600;
   color: var(--color-text-muted);
-  letter-spacing: 0.03em;
-  border-bottom: 1px solid var(--color-border);
   white-space: nowrap;
+}
+
+.upload-th {
+  /* 컬럼별 너비 지정용 — 스타일은 위 선택자에서 */
 }
 
 .upload-th--name   { }
 .upload-th--date   { width: 120px; white-space: nowrap; }
 .upload-th--tab    { width: 64px; text-align: center; }
+.upload-th--form   { width: 140px; }
 .upload-th--edit   { width: 48px; text-align: center; }
+
+.upload-td--form {
+  padding: 10px var(--space-4);
+  vertical-align: middle;
+}
+
+.upload-form-tag {
+  display: inline-flex;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-family: var(--font-sans);
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.upload-form-tag--all {
+  color: var(--color-success);
+  background: var(--color-success-dim);
+  border-color: var(--color-success-border);
+}
 
 /* Row */
 .upload-row {
   transition: background var(--transition-fast);
 }
-.upload-row:hover {
-  background: var(--color-surface-2);
+.upload-row:hover td {
+  background: var(--table-hover-bg);
 }
 .upload-row + .upload-row > .upload-td {
   border-top: 1px solid var(--color-border-light);
 }
 
-.upload-td {
+.upload-table.ag-table td {
   padding: 13px var(--space-4);
   vertical-align: middle;
+}
+
+.upload-td {
+  /* 컬럼별 오버라이드용 */
 }
 
 .upload-td--edit,

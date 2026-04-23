@@ -36,20 +36,18 @@ const toEok = (n) => {
 };
 
 export default function KpiSection({
-  myRxCurr, myRxPrev,
-  myMsCurr, myMsPrev,
+  myRxCurr, myRxPrev, myRxLy,
   mktRxCurr, mktRxPrev,
   salesCurr, salesPrev,
-  currLabel, prevLabel,
+  currLabel,
   metricLabel, showGR,
 }) {
-  const myRxPct   = myRxPrev  != null && myRxPrev  > 0 ? (myRxCurr  - myRxPrev)  / myRxPrev  * 100 : null;
-  const myMsDelta = myMsPrev  != null ? myMsCurr - myMsPrev : null;
+  const myRxPct   = myRxPrev != null && myRxPrev > 0 ? (myRxCurr - myRxPrev) / myRxPrev * 100 : null;
   const mktPct    = mktRxPrev != null && mktRxPrev > 0 ? (mktRxCurr - mktRxPrev) / mktRxPrev * 100 : null;
-  const salesPct  = salesPrev != null && salesPrev > 0 ? (salesCurr - salesPrev)  / salesPrev  * 100 : null;
+  const salesPct  = salesPrev != null && salesPrev > 0 ? (salesCurr - salesPrev) / salesPrev * 100 : null;
+  const yoyPct    = myRxLy != null && myRxLy > 0 ? (myRxCurr - myRxLy) / myRxLy * 100 : null;
 
-  const fmtPct   = (pct) => pct != null ? `${pct >= 0 ? '↑' : '↓'} ${Math.abs(pct).toFixed(1)}%` : null;
-  const fmtDelta = (d)   => d   != null ? `${d   >= 0 ? '↑' : '↓'} ${Math.abs(d).toFixed(2)}%p` : null;
+  const fmtPct = (pct) => pct != null ? `${pct >= 0 ? '↑' : '↓'} ${Math.abs(pct).toFixed(1)}%` : null;
 
   return (
     <div className="kpi-row">
@@ -86,16 +84,15 @@ export default function KpiSection({
         prevText={myRxPrev != null ? `지난달 ${toMan(myRxPrev)}` : null}
       />
 
-      {/* 카드 3: M/S */}
+      {/* 카드 3: QoQ */}
       <KpiCard
-        label={`${currLabel} M/S`}
-        value={`${myMsCurr.toFixed(1)}%`}
+        label={`${currLabel} ${metricLabel} QoQ`}
+        value={yoyPct != null ? `${yoyPct >= 0 ? '+' : ''}${yoyPct.toFixed(1)}%` : '-'}
         icon="i"
-        rateText={fmtDelta(myMsDelta)}
-        rateUp={myMsDelta >= 0}
-        prevText={myMsPrev != null ? `지난달 ${myMsPrev.toFixed(1)}%` : null}
+        rateText={null}
+        rateUp={yoyPct >= 0}
+        prevText={myRxLy != null ? `3개월 전 ${toMan(myRxLy)}` : null}
       />
-
 
     </div>
   );

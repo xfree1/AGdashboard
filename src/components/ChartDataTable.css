@@ -1,0 +1,54 @@
+/* 상위 카드(ag-combined-card) 안에서 테이블 영역만 담당 */
+.cdt-wrap {
+  padding-top: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.cdt-scroll {
+  overflow-x: auto;
+}
+
+/* 상위 카드(ag-combined-card) 안에서 테이블 영역만 담당 */
+/* .ag-table / .ag-th / .ag-td 베이스를 사용하고 compact한 값만 오버라이드 */
+
+.cdt-table {
+  font-variant-numeric: tabular-nums;
+}
+
+.cdt-th-label {
+  width: 28px;
+}
+
+/* compact — .ag-table th(0-1-1)보다 높은 명시도(0-2-1)로 오버라이드 */
+.cdt-table.ag-table th {
+  color: var(--color-text-muted);
+  padding: 5px 6px;
+}
+
+.cdt-row-label {
+  font-size: var(--table-header-font);
+  font-weight: var(--table-header-weight);
+  color: var(--color-text-muted);
+  padding: 5px 10px 5px 0;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--table-border);
+}
+
+.cdt-table.ag-table td {
+  padding: 5px 6px;
+  font-size: var(--table-header-font);  /* xs — compact */
+  color: var(--color-text-secondary);
+}
+
+.cdt-tr-last td {
+  border-bottom: none;
+}
+
+/* 당월 컬럼 하이라이트 — ag-col--cur 로 통합됨, cdt-curr 는 하위 호환 */
+.cdt-th.cdt-curr,
+.cdt-val.cdt-curr {
+  background: var(--table-cur-col-bg);
+  color: var(--color-accent);
+  font-weight: 700;
+}

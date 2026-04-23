@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { PieChart, Pie, Cell } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { COLOR_ACCENT, DONUT_OTHER_COLORS } from '../styles/tokens';
 
 export default function ShareDonut({ vendors, myVendor, drugName, lastWeekLabel, topN = 3 }) {
@@ -50,58 +50,61 @@ export default function ShareDonut({ vendors, myVendor, drugName, lastWeekLabel,
   return (
     <div className="ag-card ag-card--donut">
       <div className="ag-card__header">
-        <div>
+        <div className="ag-title-row">
+          <div className="ag-info-icon" data-tooltip={`${lastWeekLabel} 기준`}>i</div>
           <div className="ag-card__title">M/S 현황</div>
-          <div className="ag-card__sub">{lastWeekLabel} 기준</div>
         </div>
       </div>
 
-      {/* wrap을 PieChart와 동일한 200×200으로 고정 → 중앙 텍스트 50%/50%가 정확히 cx/cy에 일치 */}
-      <div className="ag-donut-wrap">
+      <div className="ag-donut-body">
+        {/* 左: 도넛 차트 */}
         <div className="ag-donut-chart">
-          <PieChart width={200} height={200} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} style={{ pointerEvents: 'none' }}>
-            <Pie
-              data={donutData}
-              cx={100} cy={100}
-              innerRadius={68} outerRadius={88}
-              dataKey="value"
-              startAngle={90} endAngle={-270}
-              strokeWidth={0}
-              isAnimationActive={false}
-            >
-              {donutData.map((d, i) => (
-                <Cell key={i} fill={d.color} />
-              ))}
-            </Pie>
-          </PieChart>
-          <div className="ag-donut-center">
-            <div className="ag-donut-pct">{myMs.toFixed(1)}%</div>
-            <div className="ag-donut-label">{myVendor}</div>
+          <div className="ag-donut-chart__inner">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }} style={{ pointerEvents: 'none' }}>
+                <Pie
+                  data={donutData}
+                  cx="50%" cy="50%"
+                  innerRadius="67.5%" outerRadius="87.5%"
+                  dataKey="value"
+                  startAngle={90} endAngle={-270}
+                  strokeWidth={0}
+                  isAnimationActive={false}
+                >
+                  {donutData.map((d, i) => (
+                    <Cell key={i} fill={d.color} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="ag-donut-center">
+              <div className="ag-donut-pct">{myMs.toFixed(1)}%</div>
+              <div className="ag-donut-label">{myVendor}</div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="ag-donut-legend">
+        {/* 右: 범례 */}
+        <div className="ag-donut-legend">
         {donutData.map((d) => {
           const isMe = d.name === myVendor;
           return (
             <div key={d.name} className="ag-legend-item">
               <div className="ag-legend-item__left">
                 <span className="ag-legend-dot" style={{ background: d.color }} />
-                <span
-                  className="ag-legend-name"
-                  style={isMe ? { fontWeight: 700, color: 'var(--text)' } : {}}
-                >
+                <span className={`ag-legend-name${isMe ? ' ag-legend-name--me' : ''}`}>
                   {d.name}
                 </span>
               </div>
-              <span className="ag-legend-val" style={isMe ? { fontWeight: 700 } : {}}>
+              <span className={`ag-legend-val${isMe ? ' ag-legend-val--me' : ''}`}>
                 {d.value.toFixed(1)}%
               </span>
             </div>
           );
         })}
       </div>
+
+      </div>{/* ag-donut-body */}
     </div>
   );
 }

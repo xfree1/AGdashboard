@@ -1,6 +1,142 @@
 import { supabase } from '../lib/supabase';
 import { weekIdToSat, satToWeekId } from './weekUtils';
 
+/* ── 더미 데이터 (실 데이터 교체 전 틀 유지용) ─────────────────── */
+const DUMMY_WEEKS = [
+  '24.40주','24.41주','24.42주','24.43주','24.44주',
+  '24.45주','24.46주','24.47주','24.48주','24.49주','24.50주','24.51주','24.52주',
+  '25.01주','25.02주','25.03주','25.04주','25.05주','25.06주','25.07주','25.08주',
+  '25.09주','25.10주','25.11주','25.12주','25.13주','25.14주','25.15주','25.16주',
+  '25.17주','25.18주','25.19주','25.20주','25.21주','25.22주',
+];
+
+const DUMMY_VENDORS = {
+  levo_tension: [
+    { name: '비아트리스', base: 0.268 },
+    { name: '안국약품',   base: 0.101 },
+    { name: '한미약품',   base: 0.097 },
+    { name: '한림제약',   base: 0.056 },
+    { name: '종근당',     base: 0.025 },
+  ],
+  levo_saltan: [
+    { name: '안국약품',   base: 0.082 },
+    { name: '노바티스',   base: 0.194 },
+    { name: '다이이찌',   base: 0.113 },
+    { name: '한미약품',   base: 0.065 },
+  ],
+  pevarojet: [
+    { name: '안국약품',   base: 0.058 },
+    { name: '종근당',     base: 0.221 },
+    { name: '한미약품',   base: 0.147 },
+    { name: '대웅제약',   base: 0.089 },
+  ],
+  sinectura: [
+    { name: '안국약품',   base: 0.071 },
+    { name: '한미약품',   base: 0.189 },
+    { name: '동아제약',   base: 0.112 },
+  ],
+  rupafin: [
+    { name: '안국약품',   base: 0.063 },
+    { name: 'UCB',        base: 0.157 },
+    { name: '경동제약',   base: 0.098 },
+    { name: '종근당',     base: 0.072 },
+  ],
+  anycof: [
+    { name: '안국약품',   base: 0.045 },
+    { name: '대원제약',   base: 0.213 },
+    { name: '한미약품',   base: 0.134 },
+  ],
+  retopra: [
+    { name: '안국약품',   base: 0.088 },
+    { name: '한국얀센',   base: 0.201 },
+    { name: '종근당',     base: 0.143 },
+  ],
+  polax: [
+    { name: '안국약품',   base: 0.004 },
+    { name: '삼남제약',   base: 0.574 },
+    { name: 'JW중외제약', base: 0.167 },
+  ],
+};
+
+const DUMMY_SCALE = {
+  levo_tension: 2_560_000, levo_saltan: 520_000, pevarojet: 480_000,
+  sinectura: 310_000,      rupafin: 290_000,      anycof: 180_000,
+  retopra: 420_000,        polax: 2_640_000,
+};
+
+export function buildDummyDrugData(drug) {
+  const vendors = DUMMY_VENDORS[drug.id] ?? DUMMY_VENDORS.levo_tension;
+  const scale   = DUMMY_SCALE[drug.id]   ?? 1_000_000;
+
+  const vendorsSorted = vendors.map((v, vi) => ({
+    name: v.name,
+    allByWeek: DUMMY_WEEKS.map((_, wi) => {
+      const noise = Math.sin(vi * 37.3 + wi * 1.7) * 0.04;
+      return Math.round(v.base * scale * (1 + noise));
+    }),
+  }));
+
+  return {
+    drugId:        drug.id,
+    drugName:      drug.name,
+    myVendor:      drug.myVendor,
+    allWeeks:      DUMMY_WEEKS,
+    vendorsSorted,
+    metric:        drug.metric,
+    isDummy:       true,
+  };
+}
+
+/**
+ * 품목별 최신 week_id 조회 — 사이드바 업데이트 뱃지 초기 로딩에 사용
+ * localStorage 미등록 품목에 한해 호출됨
+ */
+export async function loadLatestWeekPerDrug(drugIds) {
+  const results = await Promise.all(
+    drugIds.map(async (id) => {
+      const { data } = await supabase
+        .from('weekly_data')
+        .select('week_id')
+        .eq('drug_id', id)
+        .order('week_id', { ascending: false })
+        .limit(1);
+      return [id, data?.[0]?.week_id ?? null];
+    })
+  );
+  return Object.fromEntries(results);
+}
+
+/**
+ * weekly_data 테이블에서 특정 품목의 원시 주간 처방 데이터를 로드.
+ * WeeklyPage에서 M/S 계산 등 가공에 사용.
+ */
+export async function loadWeeklyRaw(drugId) {
+  const PAGE = 1000;
+
+  const { count } = await supabase
+    .from('weekly_data')
+    .select('*', { count: 'exact', head: true })
+    .eq('drug_id', drugId)
+    .neq('product', '');
+
+  if (!count) return [];
+
+  const pages = Math.ceil(count / PAGE);
+  const results = await Promise.all(
+    Array.from({ length: pages }, (_, i) =>
+      supabase
+        .from('weekly_data')
+        .select('product, vendor, week_id, rx_value, qty_value')
+        .eq('drug_id', drugId)
+        .neq('product', '')
+        .order('week_id', { ascending: true })
+        .range(i * PAGE, (i + 1) * PAGE - 1)
+    )
+  );
+
+  return results.flatMap(({ data }) => data ?? []);
+}
+
 export async function loadMonthlySales(drugId) {
   const { data, error } = await supabase
     .from('monthly_sales')
@@ -26,15 +162,14 @@ export async function loadDrugData(drug) {
       .order('week_id', { ascending: true })
       .range(from, from + PAGE - 1);
 
-    if (error) throw new Error(`데이터 로드 실패: ${error.message}`);
-    if (!data || data.length === 0) break;
+    if (error || !data || data.length === 0) break;
     allData = allData.concat(data);
     if (data.length < PAGE) break;
     from += PAGE;
   }
   const data = allData;
 
-  if (data.length === 0) throw new Error('데이터가 없습니다.');
+  if (data.length === 0) return buildDummyDrugData(drug);
 
   // 토요일 기준 canonical week_id로 변환 후 중복 병합
   // (예: "25.53주"와 "26.01주"가 같은 토요일 → "26.01주"로 통합)

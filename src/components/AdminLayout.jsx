@@ -1,7 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { DRUGS } from '../config/drugs';
 import '../pages/DrugDashboard.css';
 import '../pages/Admin.css';
 
@@ -11,16 +9,9 @@ import '../pages/Admin.css';
  * children: 구분선 아래 흰색 영역에 표시
  */
 export default function AdminLayout({ heading, children }) {
-  const navigate = useNavigate();
-
   return (
     <div className="ag-root">
-      <Sidebar
-        drugs={DRUGS}
-        activeSection="admin"
-        onDrugChange={(drug) => navigate('/', { state: { drugId: drug.id } })}
-        onDashboardClick={() => navigate('/')}
-      />
+      <Sidebar />
       <div className="ag-main">
         {/* 구분선 위: 회색 배경, 고정 높이 */}
         <div className="ag-content admin-head">

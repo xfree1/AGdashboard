@@ -1,0 +1,124 @@
+/* ================================================
+   UbistAngukAll — 안국 품목별 전체
+   ================================================ */
+
+/* ── 스크롤 활성화 ── */
+.ubist-wrap--anguk-all {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+.ubist-wrap--anguk-all .ubist-section {
+  overflow: visible;
+}
+.ubist-wrap--anguk-all .ubist-scroll {
+  overflow-x: auto;
+}
+
+/* ── 전체 테이블 최소너비 ── */
+.ubist-table--anguk {
+  min-width: 1500px;
+}
+
+/* 2행 헤더 구조 — thead-cols 첫 번째 셀 라운딩 제거 */
+.ubist-wrap--anguk-all .ubist-thead-cols th:first-child {
+  border-top-left-radius: 0;
+}
+.ubist-wrap--anguk-all .ubist-thead-cols th:last-child {
+  border-top-right-radius: 0;
+}
+
+/* ── 그룹 헤더 행 ── */
+.ubist-wrap--anguk-all .ubist-thead-groups .ubist-th {
+  background: var(--color-gray-blue-200);
+  border-bottom: none;
+  padding: 5px var(--space-2);
+}
+.ubist-wrap--anguk-all .ubist-th--group-spacer {
+  background: var(--color-gray-blue-200) !important;
+}
+
+/* rowspan 셀(순위·품목) — 2행에 걸쳐 표시 */
+.ubist-wrap--anguk-all .ubist-thead-groups .ubist-th--rank,
+.ubist-wrap--anguk-all .ubist-thead-groups .ubist-th--company {
+  vertical-align: middle;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-gray-blue-200);
+  color: var(--color-text-primary);
+}
+
+/* ── 그룹헤더 (기여도 | 성장률 | 품목순위) ── */
+.ubist-wrap--anguk-all .ubist-th--group-label {
+  background: var(--color-gray-blue-200) !important;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-dark);
+  text-align: center;
+  vertical-align: middle;
+  padding: 6px var(--space-2);
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* ── 마지막 비교 컬럼 오른쪽 구분선 ── */
+.ubist-wrap--anguk-all .ubist-th.ubist-cmp-last,
+.ubist-wrap--anguk-all .ubist-td.ubist-cmp-last {
+  border-right: 1px solid var(--color-border) !important;
+}
+
+
+/* zebra 시 sticky 열 배경 일치 */
+.ubist-wrap--anguk-all .ubist-tr--zebra .ubist-td--rank    { background: var(--color-surface-2) !important; }
+.ubist-wrap--anguk-all .ubist-tr--zebra .ubist-td--company { background: var(--color-surface-2) !important; }
+
+/* ── 총합계 행 ── */
+.ubist-wrap--anguk-all .ubist-tr--market .ubist-td {
+  background: var(--color-gray-blue-200) !important;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+.ubist-wrap--anguk-all .ubist-tr--market .ubist-td--rank,
+.ubist-wrap--anguk-all .ubist-tr--market .ubist-td--company {
+  background: var(--color-gray-blue-200) !important;
+  color: var(--color-text-primary);
+}
+.ubist-wrap--anguk-all .ubist-tr--market .ubist-td.ubist-cmp-sticky {
+  background: var(--color-gray-blue-200) !important;
+}
+
+/* ── zebra/hover sticky cmp 배경 ── */
+.ubist-wrap--anguk-all .ubist-tr--zebra .ubist-td.ubist-cmp-sticky {
+  background: var(--color-surface-2) !important;
+}
+.ubist-wrap--anguk-all .ubist-tr:not(.ubist-tr--focus):hover .ubist-td.ubist-cmp-sticky {
+  background: var(--color-bg) !important;
+}
+.ubist-wrap--anguk-all .ubist-tr--zebra:not(.ubist-tr--focus):hover .ubist-td.ubist-cmp-sticky {
+  background: var(--color-border-light) !important;
+}
+
+/* ── 집중품목 행 강조 ── */
+.ubist-wrap--anguk-all .ubist-tr--focus .ubist-td {
+  background: var(--color-accent-mid) !important;
+}
+.ubist-wrap--anguk-all .ubist-tr--focus .ubist-td--rank,
+.ubist-wrap--anguk-all .ubist-tr--focus .ubist-td--company {
+  background: var(--color-accent-mid) !important;
+}
+.ubist-wrap--anguk-all .ubist-tr--focus .ubist-td.ubist-cmp-sticky {
+  background: var(--color-accent-mid) !important;
+}
+.ubist-wrap--anguk-all .ubist-tr--focus:hover .ubist-td,
+.ubist-wrap--anguk-all .ubist-tr--focus:hover .ubist-td--rank,
+.ubist-wrap--anguk-all .ubist-tr--focus:hover .ubist-td--company,
+.ubist-wrap--anguk-all .ubist-tr--focus:hover .ubist-td.ubist-cmp-sticky {
+  background: var(--color-accent-dim) !important;
+}
+
+/* ── 월별 총액 표기 (그룹 헤더) ── */
+.ubist-th--total-monthly {
+  text-align: center;
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}

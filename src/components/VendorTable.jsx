@@ -15,7 +15,8 @@ export default function VendorTable({ vendorsSorted, allWeeks, myVendor, metricL
 
   const last6 = Object.keys(monthGroupMap)
     .sort()
-    .slice(-6)
+    .slice(0, -1)  // 마지막 달(미완성) 제외
+    .slice(-6)     // 최근 6개 완성 달
     .map(k => monthGroupMap[k]);
 
   if (last6.length === 0) return null;
@@ -36,9 +37,10 @@ export default function VendorTable({ vendorsSorted, allWeeks, myVendor, metricL
         marketByMonth[mi] > 0 ? val / marketByMonth[mi] : 0
       );
       const lastMs  = msPerMonth[msPerMonth.length - 1] * 100;
-      const prevMs  = msPerMonth.length >= 2 ? msPerMonth[msPerMonth.length - 2] * 100 : null;
-      const gr      = prevMs != null ? lastMs - prevMs : null;
-      const rankVal = monthlyAvg[monthlyAvg.length - 1];
+      const lastAvg = monthlyAvg[monthlyAvg.length - 1];
+      const prevAvg = monthlyAvg.length >= 2 ? monthlyAvg[monthlyAvg.length - 2] : null;
+      const gr      = prevAvg != null && prevAvg > 0 ? (lastAvg - prevAvg) / prevAvg * 100 : null;
+      const rankVal = lastAvg;
       return { name: v.name, monthlyAvg, lastMs, gr, rankVal };
     })
     .sort((a, b) => b.rankVal - a.rankVal);
@@ -52,13 +54,13 @@ export default function VendorTable({ vendorsSorted, allWeeks, myVendor, metricL
   const bracket = allVendors.slice(rangeStart, rangeEnd);
   const below   = allVendors.slice(rangeEnd);
 
-  const makeEtcRow = (label, list) => list.length === 0 ? null : {
-    name: label,
-    monthlyAvg: last6.map((_, mi) => list.reduce((s, v) => s + v.monthlyAvg[mi], 0)),
-    lastMs: list.reduce((s, v) => s + v.lastMs, 0),
-    gr: null,
-    rankVal: null,
-    isEtc: true,
+  const makeEtcRow = (label, list) => {
+    if (list.length === 0) return null;
+    const monthlyAvg = last6.map((_, mi) => list.reduce((s, v) => s + v.monthlyAvg[mi], 0));
+    const lastAvg = monthlyAvg[monthlyAvg.length - 1];
+    const prevAvg = monthlyAvg.length >= 2 ? monthlyAvg[monthlyAvg.length - 2] : null;
+    const gr = prevAvg != null && prevAvg > 0 ? (lastAvg - prevAvg) / prevAvg * 100 : null;
+    return { name: label, monthlyAvg, gr, rankVal: null, isEtc: true };
   };
 
   const belowRow = makeEtcRow('기타', below);
@@ -71,15 +73,7 @@ export default function VendorTable({ vendorsSorted, allWeeks, myVendor, metricL
   // 브래킷 표시용 (1-based)
   const bracketLabel = `${rangeStart + 1}위 ~ ${Math.min(rangeEnd, allVendors.length)}위`;
 
-  const lastMonth = last6[last6.length - 1];
-  const msHeader  = `${lastMonth.month}월 M/S`;
-  const grHeader  = '증감(%p)';
-
-  const mktLast = marketByMonth[marketByMonth.length - 1];
-  const mktPrev = marketByMonth.length >= 2 ? marketByMonth[marketByMonth.length - 2] : null;
-  const mktGR   = mktPrev != null && mktPrev > 0
-    ? (mktLast - mktPrev) / mktPrev * 100
-    : null;
+  const grHeader  = '전월대비';
 
   const sepMonthIdx = last6.length - 2;
 
@@ -92,21 +86,20 @@ export default function VendorTable({ vendorsSorted, allWeeks, myVendor, metricL
   return (
     <div className="ag-card">
       <div className="ag-card__header">
-        <div>
+        <div className="ag-title-row">
+          <div className="ag-info-icon" data-tooltip={`${metricLabel} 기준 · ${bracketLabel} · 전체 ${totalVendorCount ?? vendorsSorted.length}개사`}>i</div>
           <div className="ag-card__title">판매사 순위</div>
-          <div className="ag-card__sub">{metricLabel} 기준 · {bracketLabel} · 전체 {totalVendorCount ?? vendorsSorted.length}개사</div>
         </div>
       </div>
 
       <div className="dd-table-wrap dd-table-wrap--noscroll">
-        <table className="dd-table dd-table--fixed">
+        <table className="dd-table dd-table--fixed ag-table">
           <colgroup>
             <col className="col-rank" />
             <col className="col-name" />
             {last6.map((_, i) => (
               <col key={i} className={i === last6.length - 1 ? 'col-month col-cur' : 'col-month'} />
             ))}
-            <col className="col-ms" />
             <col className="col-gr" />
           </colgroup>
           <thead>
@@ -116,7 +109,6 @@ export default function VendorTable({ vendorsSorted, allWeeks, myVendor, metricL
               {last6.map(({ year, month }, i) => (
                 <th key={`${year}-${month}`} className={monthCls(i)}>{month}월</th>
               ))}
-              <th className="val col-cur">{msHeader}</th>
               <th className="val col-cur">{grHeader}</th>
             </tr>
           </thead>
@@ -126,7 +118,7 @@ export default function VendorTable({ vendorsSorted, allWeeks, myVendor, metricL
               const isEtc = v.isEtc;
               const rankNum = isEtc ? null : rangeStart + idx + 1;
               return (
-                <tr key={v.name} className={isMe ? 'dd-table__my-row' : ''}>
+                <tr key={v.name} className={[isMe ? 'dd-table__my-row' : '', idx % 2 === 1 ? 'ag-tr--zebra' : ''].filter(Boolean).join(' ')}>
                   <td className="rank">{rankNum ?? ''}</td>
                   <td className="name">{v.name}</td>
                   {v.monthlyAvg.map((val, mi) => (
@@ -134,10 +126,9 @@ export default function VendorTable({ vendorsSorted, allWeeks, myVendor, metricL
                       {Math.round(val).toLocaleString()}
                     </td>
                   ))}
-                  <td className="val col-cur">{v.lastMs.toFixed(1)}%</td>
                   <td className={`val col-cur ${v.gr != null ? pctClass(v.gr) : ''}`}>
                     {v.gr != null
-                      ? `${v.gr >= 0 ? '+' : ''}${v.gr.toFixed(2)}%p`
+                      ? `${v.gr >= 0 ? '+' : ''}${v.gr.toFixed(1)}%`
                       : '—'}
                   </td>
                 </tr>
@@ -153,12 +144,7 @@ export default function VendorTable({ vendorsSorted, allWeeks, myVendor, metricL
                   {Math.round(val).toLocaleString()}
                 </td>
               ))}
-              <td colSpan={2} className="val col-cur total mkt-gr-cell">
-                시장 전월 대비{' '}
-                <span className="mkt-gr-value">
-                  {mktGR != null ? `${mktGR >= 0 ? '+' : ''}${mktGR.toFixed(1)}%` : '—'}
-                </span>
-              </td>
+              <td className="val col-cur total">—</td>
             </tr>
           </tbody>
         </table>

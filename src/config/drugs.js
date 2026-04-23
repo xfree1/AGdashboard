@@ -58,12 +58,12 @@ export const DRUGS = [
     name: '루파핀',
     ingredient: ['rupatadine'],
     excludeIngredient: [],
+    excludeDosage: ['(SY)', '(LQ)', '(IJ)'],  // 시럽/액제/주사 제외, 정제 계열만
     myVendor: '안국약품',
     metric: 'qty',
     topN: 5,
     showGR: true,
     showDonut: true,
-    // 데이터 확인법: 미확인 — 확인 후 업데이트 필요
   },
   {
     id: 'anycof',
@@ -71,12 +71,13 @@ export const DRUGS = [
     name: '애니코프',
     ingredient: ['levodropropizine'],
     excludeIngredient: [],
+    excludeDosage: ['(SY)', '(LQ)', '(IJ)'],
+    marketProduct: '칼로민',  // 시장 파일 감지용 — 이 제품명이 있으면 anycof 시장 파일로 인식
     myVendor: '안국약품',
     metric: 'qty',
     topN: 5,
     showGR: true,
     showDonut: true,
-    // 데이터 확인법: 미확인 — 확인 후 업데이트 필요
   },
   {
     id: 'retopra',

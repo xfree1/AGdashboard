@@ -44,7 +44,7 @@ async function fetchExisting(drugId) {
   while (true) {
     const { data, error } = await supabase
       .from('weekly_data')
-      .select('vendor, week_id, rx_value, qty_value')
+      .select('product, vendor, week_id, rx_value, qty_value')
       .eq('drug_id', drugId)
       .range(from, from + PAGE - 1);
 
@@ -55,13 +55,14 @@ async function fetchExisting(drugId) {
     from += PAGE;
   }
 
-  const existingMap = {};   // vendor → week_id → { rx, qty }
+  const existingMap   = {};  // `product||vendor` → week_id → { rx, qty }
   const existingWeeks = new Set();
 
   for (const row of allData) {
     existingWeeks.add(row.week_id);
-    if (!existingMap[row.vendor]) existingMap[row.vendor] = {};
-    existingMap[row.vendor][row.week_id] = {
+    const key = `${row.product || ''}||${row.vendor || ''}`;
+    if (!existingMap[key]) existingMap[key] = {};
+    existingMap[key][row.week_id] = {
       rx:  row.rx_value  ?? 0,
       qty: row.qty_value ?? 0,
     };
@@ -70,24 +71,37 @@ async function fetchExisting(drugId) {
   return { existingMap, existingWeeks };
 }
 
-/** 파싱된 rows → vendor × week 집계 맵 */
+/** 파싱된 rows → (product||vendor) × week 집계 맵 */
 function aggregate(rows) {
-  const vendorMap = {};
-  const weekSet   = new Set();
+  const vendorMap  = {};  // key(`product||vendor`) → week_id → { rx, qty }
+  const metaMap    = {};  // key → { product, vendor, dosageForm }
+  const dosageSets = {};  // key → Set<string>
+  const weekSet    = new Set();
 
   for (const row of rows) {
     weekSet.add(row.week_id);
-    if (!vendorMap[row.vendor]) vendorMap[row.vendor] = {};
-    if (!vendorMap[row.vendor][row.week_id])
-      vendorMap[row.vendor][row.week_id] = { rx: 0, qty: 0 };
-    vendorMap[row.vendor][row.week_id].rx  += row.rx_value  ?? 0;
-    vendorMap[row.vendor][row.week_id].qty += row.qty_value ?? 0;
+    const key = `${row.product || ''}||${row.vendor || ''}`;
+    if (!vendorMap[key]) {
+      vendorMap[key]  = {};
+      metaMap[key]    = { product: row.product || '', vendor: row.vendor || '', dosageForm: '' };
+      dosageSets[key] = new Set();
+    }
+    if (row.dosage_form) dosageSets[key].add(row.dosage_form);
+    if (!vendorMap[key][row.week_id])
+      vendorMap[key][row.week_id] = { rx: 0, qty: 0 };
+    vendorMap[key][row.week_id].rx  += row.rx_value  ?? 0;
+    vendorMap[key][row.week_id].qty += row.qty_value ?? 0;
+  }
+
+  for (const key of Object.keys(metaMap)) {
+    metaMap[key].dosageForm = [...dosageSets[key]].join('/');
   }
 
   return {
-    weeks:     [...weekSet].sort(),
-    vendors:   Object.keys(vendorMap),
+    weeks:   [...weekSet].sort(),
+    vendors: Object.keys(vendorMap),
     vendorMap,
+    metaMap,
   };
 }
 
@@ -112,6 +126,29 @@ function analyze(parsedAgg, existingMap, existingWeeks, metric) {
   return { newWeeks, overlapWeeks, changes };
 }
 
+/** 시장 합계 기준 10% 이상 차이 주차 감지 (최신 1주 제외) */
+function checkAnomalies(parsedAgg, existingMap, existingWeeks, metric) {
+  if (existingWeeks.size === 0) return [];
+  const { weeks, vendors, vendorMap } = parsedAgg;
+  const overlapWeeks = weeks.filter(w => existingWeeks.has(w));
+  const checkWeeks   = overlapWeeks.slice(0, -1); // 최신 1주 제외
+  if (checkWeeks.length === 0) return [];
+
+  const anomalies = [];
+  for (const weekId of checkWeeks) {
+    const newTotal = vendors.reduce(
+      (s, v) => s + (vendorMap[v]?.[weekId]?.[metric] ?? 0), 0
+    );
+    const existingTotal = Object.values(existingMap).reduce(
+      (s, weekMap) => s + (weekMap[weekId]?.[metric] ?? 0), 0
+    );
+    if (existingTotal === 0) continue;
+    const diff = Math.abs(newTotal - existingTotal) / existingTotal;
+    if (diff > 0.10) anomalies.push({ weekId, newTotal, existingTotal, diff });
+  }
+  return anomalies;
+}
+
 /* ── 컴포넌트 ─────────────────────────────────────────── */
 
 export default function UploadConfirm() {
@@ -131,44 +168,57 @@ export default function UploadConfirm() {
   })) ?? [];
 
   /* ── state ── */
-  const [activeIdx, setActiveIdx] = useState(0);
-  const [saving,    setSaving]    = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [tabState,  setTabState]  = useState({});
-  const [colEndMap, setColEndMap] = useState({});
+  const [activeIdx,    setActiveIdx]    = useState(0);
+  const [saving,       setSaving]       = useState(false);
+  const [saveError,    setSaveError]    = useState('');
+  const [tabState,     setTabState]     = useState({});
+  const [colEndMap,    setColEndMap]    = useState({});
+  const [checkedDrugs, setCheckedDrugs] = useState(
+    () => new Set(parsed?.results?.map(r => r.drugId) ?? [])
+  );
+
+  const toggleDrug = (drugId) => {
+    setCheckedDrugs(prev => {
+      const next = new Set(prev);
+      next.has(drugId) ? next.delete(drugId) : next.add(drugId);
+      return next;
+    });
+  };
 
   /* ── 리다이렉트: 상태 없이 진입 ── */
   useEffect(() => {
     if (!parsed) navigate('/admin', { replace: true });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── 탭 변경 시 기존 데이터 로드 ── */
   const activeTab = tabs[activeIdx] ?? null;
 
+  /* ── 마운트 시 모든 탭 데이터 로드 + 이상 감지 ── */
   useEffect(() => {
-    if (!activeTab) return;
-    const { drugId } = activeTab;
-    if (tabState[drugId]) return; // 이미 로드됨
-
-    setTabState(prev => ({
-      ...prev,
-      [drugId]: { loading: true, existingMap: {}, existingWeeks: new Set(), error: '' },
-    }));
-
-    fetchExisting(drugId)
-      .then(({ existingMap, existingWeeks }) => {
-        setTabState(prev => ({
-          ...prev,
-          [drugId]: { loading: false, existingMap, existingWeeks, error: '' },
-        }));
-      })
-      .catch(e => {
-        setTabState(prev => ({
-          ...prev,
-          [drugId]: { loading: false, existingMap: {}, existingWeeks: new Set(), error: e.message },
-        }));
-      });
-  }, [activeIdx, activeTab?.drugId]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (isSales || !parsed?.results) return;
+    parsed.results.forEach(({ drugId, rows }) => {
+      setTabState(prev => ({
+        ...prev,
+        [drugId]: { loading: true, existingMap: {}, existingWeeks: new Set(), error: '', anomalies: [] },
+      }));
+      const drug   = findDrug(drugId);
+      const metric = drug?.metric ?? 'qty';
+      fetchExisting(drugId)
+        .then(({ existingMap, existingWeeks }) => {
+          const parsedAgg = aggregate(rows);
+          const anomalies = checkAnomalies(parsedAgg, existingMap, existingWeeks, metric);
+          setTabState(prev => ({
+            ...prev,
+            [drugId]: { loading: false, existingMap, existingWeeks, error: '', anomalies },
+          }));
+        })
+        .catch(e => {
+          setTabState(prev => ({
+            ...prev,
+            [drugId]: { loading: false, existingMap: {}, existingWeeks: new Set(), error: e.message, anomalies: [] },
+          }));
+        });
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── 저장 ── */
   const handleSave = async () => {
@@ -200,19 +250,26 @@ export default function UploadConfirm() {
           .upsert(DRUG_ROWS, { onConflict: 'id' });
         if (drugErr) throw new Error(`약 정보 등록 실패: ${drugErr.message}`);
 
-        for (const { rows } of parsed.results) {
+        for (const { drugId, rows } of parsed.results) {
+          if (!checkedDrugs.has(drugId)) continue; // 체크 해제된 품목 스킵
           for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-            const batch = rows.slice(i, i + BATCH_SIZE);
+            const batch = rows.slice(i, i + BATCH_SIZE).map(
+              ({ drug_id, product, vendor, week_id, rx_value, qty_value }) =>
+                ({ drug_id, product, vendor, week_id, rx_value, qty_value })
+            );
             const { error: err } = await supabase
               .from('weekly_data')
-              .upsert(batch, { onConflict: 'drug_id,vendor,week_id' });
+              .upsert(batch, { onConflict: 'drug_id,product,vendor,week_id' });
             if (err) throw new Error(err.message);
           }
         }
-        // localStorage 처방 dot 업데이트
-        const affectedIds = new Set(parsed.results.map(r => findDrug(r.drugId)?.id ?? r.drugId));
-        for (const id of affectedIds) {
-          localStorage.setItem(`ag_upload_${id}_처방`, now);
+        for (const { drugId, rows } of parsed.results) {
+          if (!checkedDrugs.has(drugId)) continue;
+          const drug       = findDrug(drugId);
+          if (!drug) continue;
+          const latestWeek = rows.map(r => r.week_id).filter(Boolean).sort().at(-1);
+          if (latestWeek) localStorage.setItem(`ag_weekly_latest_${drug.id}`, latestWeek);
+          localStorage.setItem(`ag_upload_${drug.id}_처방`, now);
         }
       }
 
@@ -248,7 +305,7 @@ export default function UploadConfirm() {
           <button
             className="admin-action-btn admin-action-btn--primary admin-action-btn--lg"
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || (!isSales && checkedDrugs.size === 0)}
           >
             {saving ? (
               <>
@@ -283,7 +340,7 @@ export default function UploadConfirm() {
         </div>
         {fileName && <div className="uc-col-nav-wrap"><span className="uc-filename">{fileName}</span></div>}
         <div className="preview-table-wrap">
-          <table className="preview-table">
+          <table className="preview-table ag-table">
             <thead>
               <tr>
                 <th className="preview-th preview-th--vendor">월</th>
@@ -326,13 +383,15 @@ export default function UploadConfirm() {
       return <div className="admin-error">{state.error}</div>;
     }
 
+    const anomalies = state.anomalies ?? [];
+
     const drug     = findDrug(drugId);
     const metric   = drug?.metric ?? 'qty';
     const myVendor = drug?.myVendor ?? '';
 
-    const parsedAgg                     = aggregate(rows);
-    const { weeks, vendors, vendorMap } = parsedAgg;
-    const { newWeeks, overlapWeeks, changes } = analyze(
+    const parsedAgg                              = aggregate(rows);
+    const { weeks, vendors, vendorMap, metaMap } = parsedAgg;
+    const { newWeeks, overlapWeeks, changes }    = analyze(
       parsedAgg, state.existingMap, state.existingWeeks, metric
     );
 
@@ -343,19 +402,51 @@ export default function UploadConfirm() {
     const fmt = v => (v ?? 0).toLocaleString();
 
     const sortedVendors = [...vendors].sort((a, b) => {
-      if (a === myVendor) return -1;
-      if (b === myVendor) return 1;
+      const aIsMe = metaMap[a]?.vendor === myVendor;
+      const bIsMe = metaMap[b]?.vendor === myVendor;
+      if (aIsMe) return -1;
+      if (bIsMe) return 1;
       const totA = weeks.reduce((s, w) => s + (vendorMap[a]?.[w]?.[metric] ?? 0), 0);
       const totB = weeks.reduce((s, w) => s + (vendorMap[b]?.[w]?.[metric] ?? 0), 0);
       return totB - totA;
     });
 
-    // 변경값 빠른 검색용 맵: "vendor::weekId" → change
+    // 표시 행: 안국약품 포함 상위 20개
+    const myRows      = sortedVendors.filter(k => metaMap[k]?.vendor === myVendor);
+    const topOther    = sortedVendors
+      .filter(k => metaMap[k]?.vendor !== myVendor)
+      .slice(0, Math.max(0, 20 - myRows.length));
+    const displayVendors = [...myRows, ...topOther];
+
+    // 변경값 빠른 검색용 맵: "key::weekId" → change
     const changeMap = {};
     for (const c of changes) changeMap[`${c.vendor}::${c.weekId}`] = c;
 
     return (
       <>
+        {/* 이상 감지 블록 */}
+        {anomalies.length > 0 && (
+          <div className="uc-anomaly">
+            <svg className="uc-anomaly__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="M8 6v3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="8" cy="11.5" r="0.75" fill="currentColor"/>
+            </svg>
+            <div className="uc-anomaly__body">
+              <strong className="uc-anomaly__title">데이터 이상 감지 — 확인 후 저장 가능</strong>
+              <p className="uc-anomaly__desc">기존 데이터 대비 10% 이상 차이나는 주차가 있습니다. 파일을 확인해주세요.</p>
+              <div className="uc-anomaly__list">
+                {anomalies.map(a => (
+                  <span key={a.weekId} className="uc-anomaly__item">
+                    {fmtWeekLabel(a.weekId)}: {(a.diff * 100).toFixed(1)}% 차이
+                    ({Math.round(a.existingTotal).toLocaleString()} → {Math.round(a.newTotal).toLocaleString()})
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 통계 바 */}
         <div className="uc-stats">
           <div className="uc-stat uc-stat--new">
@@ -386,21 +477,25 @@ export default function UploadConfirm() {
               </span>
             </div>
             <div className="uc-warning__list">
-              {changes.slice(0, 12).map((c, i) => (
-                <div key={i} className="uc-warning__item">
-                  <span className="uc-warning__vendor">{c.vendor}</span>
-                  <span className="uc-warning__week">{fmtWeekLabel(c.weekId)}</span>
-                  <span className="uc-warning__diff">
-                    <span className="uc-warning__old">{fmt(c.oldVal)}</span>
-                    <span className="uc-warning__arrow">→</span>
-                    <span className="uc-warning__new">{fmt(c.newVal)}</span>
-                    {c.newVal > c.oldVal
-                      ? <span className="uc-badge uc-badge--up">▲</span>
-                      : <span className="uc-badge uc-badge--down">▼</span>
-                    }
-                  </span>
-                </div>
-              ))}
+              {changes.slice(0, 12).map((c, i) => {
+                const wMeta  = metaMap[c.vendor] ?? { product: '', vendor: c.vendor };
+                const wLabel = wMeta.product ? `${wMeta.product} (${wMeta.vendor})` : wMeta.vendor;
+                return (
+                  <div key={i} className="uc-warning__item">
+                    <span className="uc-warning__vendor">{wLabel}</span>
+                    <span className="uc-warning__week">{fmtWeekLabel(c.weekId)}</span>
+                    <span className="uc-warning__diff">
+                      <span className="uc-warning__old">{fmt(c.oldVal)}</span>
+                      <span className="uc-warning__arrow">→</span>
+                      <span className="uc-warning__new">{fmt(c.newVal)}</span>
+                      {c.newVal > c.oldVal
+                        ? <span className="uc-badge uc-badge--up">▲</span>
+                        : <span className="uc-badge uc-badge--down">▼</span>
+                      }
+                    </span>
+                  </div>
+                );
+              })}
               {changes.length > 12 && (
                 <div className="uc-warning__more">외 {changes.length - 12}건 더...</div>
               )}
@@ -435,12 +530,14 @@ export default function UploadConfirm() {
           </div>
         </div>
 
-        {/* 데이터 테이블 */}
+        {/* 주차별 상세 테이블 */}
         <div className="preview-table-wrap">
-          <table className="preview-table">
+          <table className="preview-table ag-table">
             <thead>
               <tr>
-                <th className="preview-th preview-th--vendor">제조사</th>
+                <th className="preview-th preview-th--vendor">제품명</th>
+                <th className="preview-th preview-th--vendor2">제조사</th>
+                <th className="preview-th preview-th--form">제형</th>
                 {visibleWeeks.map(w => (
                   <th
                     key={w}
@@ -453,41 +550,47 @@ export default function UploadConfirm() {
               </tr>
             </thead>
             <tbody>
-              {sortedVendors.map(vendor => (
-                <tr
-                  key={vendor}
-                  className={`preview-row${vendor === myVendor ? ' preview-row--mine' : ''}`}
-                >
-                  <td className="preview-td preview-td--vendor">{vendor}</td>
-                  {visibleWeeks.map(w => {
-                    const val    = vendorMap[vendor]?.[w]?.[metric] ?? 0;
-                    const isNew  = newWeeks.has(w);
-                    const change = !isNew ? changeMap[`${vendor}::${w}`] : null;
+              {displayVendors.map(key => {
+                const meta = metaMap[key] ?? { product: '', vendor: key, dosageForm: '' };
+                const isMe = meta.vendor === myVendor;
+                return (
+                  <tr
+                    key={key}
+                    className={`preview-row${isMe ? ' preview-row--mine' : ''}`}
+                  >
+                    <td className="preview-td preview-td--vendor">{meta.product || '—'}</td>
+                    <td className="preview-td preview-td--vendor2">{meta.vendor}</td>
+                    <td className="preview-td preview-td--form">{meta.dosageForm || '—'}</td>
+                    {visibleWeeks.map(w => {
+                      const val    = vendorMap[key]?.[w]?.[metric] ?? 0;
+                      const isNew  = newWeeks.has(w);
+                      const change = !isNew ? changeMap[`${key}::${w}`] : null;
 
-                    let cls = 'preview-td preview-td--value';
-                    if (isNew)   cls += ' uc-td--new';
-                    else if (change) cls += ' uc-td--changed';
-                    else if (val === 0) cls += ' preview-td--zero';
+                      let cls = 'preview-td preview-td--value';
+                      if (isNew)        cls += ' uc-td--new';
+                      else if (change)  cls += ' uc-td--changed';
+                      else if (val === 0) cls += ' preview-td--zero';
 
-                    return (
-                      <td
-                        key={w}
-                        className={cls}
-                        title={change
-                          ? `기존: ${fmt(change.oldVal)}  →  신규: ${fmt(change.newVal)}`
-                          : undefined}
-                      >
-                        {fmt(val)}
-                        {change && (
-                          <span className={`uc-cell-arrow${change.newVal > change.oldVal ? ' uc-cell-arrow--up' : ' uc-cell-arrow--down'}`}>
-                            {change.newVal > change.oldVal ? '▲' : '▼'}
-                          </span>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                      return (
+                        <td
+                          key={w}
+                          className={cls}
+                          title={change
+                            ? `기존: ${fmt(change.oldVal)}  →  신규: ${fmt(change.newVal)}`
+                            : undefined}
+                        >
+                          {fmt(val)}
+                          {change && (
+                            <span className={`uc-cell-arrow${change.newVal > change.oldVal ? ' uc-cell-arrow--up' : ' uc-cell-arrow--down'}`}>
+                              {change.newVal > change.oldVal ? '▲' : '▼'}
+                            </span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -508,15 +611,29 @@ export default function UploadConfirm() {
       {/* 탭 바 */}
       <div className="preview-tabbar">
         <div className="preview-tabs">
-          {tabs.map((tab, idx) => (
-            <button
-              key={tab.drugId}
-              className={`preview-tab${idx === activeIdx ? ' preview-tab--active' : ''}`}
-              onClick={() => setActiveIdx(idx)}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {tabs.map((tab, idx) => {
+            const hasAnomaly = (tabState[tab.drugId]?.anomalies?.length ?? 0) > 0;
+            return (
+              <button
+                key={tab.drugId}
+                className={`preview-tab${idx === activeIdx ? ' preview-tab--active' : ''}${hasAnomaly ? ' preview-tab--anomaly' : ''}`}
+                onClick={() => setActiveIdx(idx)}
+              >
+                {!isSales && (
+                  <input
+                    type="checkbox"
+                    className="uc-tab-check"
+                    checked={checkedDrugs.has(tab.drugId)}
+                    disabled={false}
+                    onChange={() => {}}
+                    onClick={e => { e.stopPropagation(); if (!hasAnomaly) toggleDrug(tab.drugId); }}
+                  />
+                )}
+                {tab.label}
+                {hasAnomaly && <span className="uc-tab-warn">⚠</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
 

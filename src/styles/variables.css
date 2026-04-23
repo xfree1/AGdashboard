@@ -4,12 +4,21 @@
    ================================================ */
 
 :root {
+  /* --- Primitive Colors --- */
+  --color-gray-50:  #f6f7f9;
+  --color-gray-100: #e4e7eb;
+  --color-gray-200: #d1d5db;
+  --color-gray-blue-200: #cdd8e8;  /* 회색+파랑 혼합 */
+  --color-gray-blue-300: #b5c7dc;  /* gray-blue 진한 단계 */
+
   /* --- Colors --- */
-  --color-bg:           #f0f4f8;
+  --color-bg:           var(--color-gray-50);
   --color-surface:      #ffffff;
   --color-surface-2:    #f5f8fc;
   --color-border:       #dce6f0;
   --color-border-light: #e8eef5;
+  --color-border-strong: #b0c4d8;
+  --color-border-group: #6e8fad;
 
   --color-accent:       #288cfa;
   --color-accent-dim:   rgba(40, 140, 250, 0.08);
@@ -19,12 +28,17 @@
   --color-danger-dim:   rgba(220, 38, 38, 0.08);
   --color-success:      #16a34a;
 
-  /* Sidebar */
-  --color-sidebar-bg:          #0a0a0a;
-  --color-sidebar-text:        rgba(255,255,255,0.55);
-  --color-sidebar-active-text: #ffffff;
-  --color-sidebar-border:      rgba(255,255,255,0.08);
+  /* 강조 행 하이라이트 (안국약품 등) */
+  --color-highlight:    #fff176;
 
+  /* Sidebar */
+  --color-sidebar-bg:          var(--color-surface);
+  --color-sidebar-text:        var(--color-text-muted);
+  --color-sidebar-active-text: var(--color-text-primary);
+  --color-sidebar-on-accent:   var(--color-surface);
+  --color-sidebar-border:      var(--color-border);
+
+  --color-text-dark:      #111827;  /* 진한 검정 — 테이블 등 고대비 텍스트 */
   --color-text-primary:   #0f1f3d;
   --color-text-secondary: #3d5470;
   --color-text-muted:     #7a90a8;
@@ -37,7 +51,7 @@
   --color-chart-vendor: #60a5fa;
 
   /* Sidebar hover/active (DrugDashboard) */
-  --color-sidebar-hover-bg: rgba(255,255,255,0.07);
+  --color-sidebar-hover-bg: var(--color-surface-2);
 
   /* Badge: 증감 up/down */
   --color-badge-up-text:   #14532d;
@@ -49,6 +63,9 @@
   --color-col-cur-bg:       #f0f6ff;
   --color-col-cur-my-bg:    #dbeafe;
   --color-col-cur-total-bg: #e8f0fe;
+
+  /* Weekly 테이블 normal 행 배경 */
+  --color-row-normal-bg:    #eef4ff;
 
   /* Accent 파생 */
   --color-accent-hover:  #1a7ae8;
@@ -74,8 +91,10 @@
   --color-success-border: rgba(22, 163, 74, 0.25);  /* 성공 테두리 */
 
   /* Danger 파생 */
-  --color-danger-border:  rgba(220, 38, 38, 0.25);  /* 오류 테두리 */
-  --color-danger-tint:    rgba(220, 38, 38, 0.03);  /* 오류 행 배경 (극연한) */
+  --color-danger-border:    rgba(220, 38, 38, 0.25);  /* 오류 테두리 */
+  --color-danger-tint:      rgba(220, 38, 38, 0.03);  /* 오류 행 배경 (극연한) */
+  --color-danger-dark:      #b91c1c;                  /* 강조 텍스트 */
+  --color-danger-badge-bg:  rgba(220, 38, 38, 0.15);  /* 배지 배경 */
 
   /* Overlay */
   --color-overlay-surface: rgba(255, 255, 255, 0.75); /* 반투명 흰색 오버레이 */
@@ -87,9 +106,8 @@
   /* 본문: Pretendard Variable (한글+영문 최적화) → 시스템 폰트 순서로 fallback */
   --font-sans: 'Pretendard Variable', Pretendard, sans-serif;
 
-  /* 숫자/코드: 시스템 모노 폰트 (별도 로드 없이 선명하게) */
-  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas',
-               'D2Coding', 'Courier New', monospace;
+  /* 숫자/코드: Pretendard 통일 */
+  --font-mono: 'Pretendard Variable', Pretendard, sans-serif;
 
   /* --- 폰트 크기 --- */
   --text-xs:   0.75rem;    /* 12px — 라벨, 뱃지, 힌트 (10·11·12px 통합) */
@@ -116,7 +134,9 @@
   --space-12: 48px;
 
   /* --- Layout --- */
-  --sidebar-width:  240px;
+  --sidebar-width:           240px;
+  --sidebar-width-collapsed: 64px;
+  --sidebar-panel-width:     246px;
   --header-height:  56px;
   --content-max:    1400px;
   --radius-sm:      4px;
@@ -127,6 +147,27 @@
   --shadow-card:  0 1px 4px rgba(15,31,61,0.07), 0 0 0 1px var(--color-border);
   --shadow-glow:  0 0 16px rgba(40,140,250,0.2);
   --shadow-popup: 0 8px 32px rgba(15,31,61,0.15);
+
+  /* --- Table --- */
+  --table-th-pad:        7px 10px;                  /* th 패딩 */
+  --table-td-pad:        6px 10px;                  /* td 패딩 */
+  --table-cell-pad:      var(--table-td-pad);        /* 하위 호환 */
+  --table-header-bg:     var(--color-bg);           /* th 배경 */
+  --table-header-color:  var(--color-text-dark);    /* th 텍스트 */
+  --table-header-font:   var(--text-sm);            /* th 폰트 크기 */
+  --table-header-weight: 600;
+  --table-body-font:     var(--text-sm);            /* td 폰트 크기 */
+  --table-body-color:    var(--color-text-dark);    /* td 텍스트 */
+  --table-border:        var(--color-border);
+  --table-zebra-bg:      var(--color-surface-2);
+  --table-hover-bg:      var(--color-bg);
+  --table-hover-zebra-bg: var(--color-border-light);
+  --table-highlight-bg:  var(--color-highlight);    /* 안국 행 */
+  --table-my-bg:         var(--color-accent-dim);   /* 내 행 (VendorTable) */
+  --table-total-bg:      var(--color-surface-2);    /* Total 행 */
+  --table-cur-col-bg:    var(--color-col-cur-bg);   /* 당월 컬럼 */
+  --table-diff-up:       var(--color-accent);
+  --table-diff-down:     var(--color-danger);
 
   /* --- Transitions --- */
   /* --- Button sizes --- */

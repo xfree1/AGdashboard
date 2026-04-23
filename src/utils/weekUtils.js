@@ -52,6 +52,20 @@ export function weekIdToYearMonth(weekId) {
 }
 
 /**
+ * weekId → "YY.MM.DD" 형식 날짜 문자열 (항상 연도 포함)
+ * @param {string} weekId
+ * @returns {string}
+ */
+export function fmtWeekDate(weekId) {
+  const sat = weekIdToSat(weekId);
+  if (!sat) return String(weekId);
+  const yy = String(sat.getFullYear()).slice(2);
+  const mm = String(sat.getMonth() + 1).padStart(2, '0');
+  const dd = String(sat.getDate()).padStart(2, '0');
+  return `${yy}.${mm}.${dd}`;
+}
+
+/**
  * weekId → "MM.DD" 형식 날짜 문자열
  * @param {string} weekId
  * @returns {string}

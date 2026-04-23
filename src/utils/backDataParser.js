@@ -108,10 +108,11 @@ function parseSheet(ws, sheetName, drugId) {
     for (const weekId of allWeeks) {
       rows.push({
         drug_id:   drugId,
+        product:   '',   // 백데이터 탭 형식은 제품명 없음
         vendor,
         week_id:   weekId,
-        rx_value:  Math.round(data[`rx_${weekId}`]  ?? 0),
-        qty_value: Math.round(data[`qty_${weekId}`] ?? 0),
+        rx_value:  data[`rx_${weekId}`]  ?? 0,
+        qty_value: data[`qty_${weekId}`] ?? 0,
       });
     }
   }
@@ -192,15 +193,123 @@ function parseRawSheet(ws, drug) {
     for (const weekId of allWeeks) {
       rows.push({
         drug_id:   drug.dbId,
+        product:   vendor,   // 제품명 없는 로우파일은 판매사명을 product로 사용
         vendor,
         week_id:   weekId,
-        rx_value:  Math.round(data[`rx_${weekId}`]  ?? 0),
-        qty_value: Math.round(data[`qty_${weekId}`] ?? 0),
+        rx_value:  data[`rx_${weekId}`]  ?? 0,
+        qty_value: data[`qty_${weekId}`] ?? 0,
       });
     }
   }
 
   return { drugId: drug.dbId, sheetName: `${drug.name} (로우데이터)`, rows };
+}
+
+/* ── 시장 파일 파서 ────────────────────────────────────────────
+   지원 포맷:
+   A) 표준(2행): row0=타입, row1=헤더(컬럼명·주차), row2+=데이터
+   B) 단일행:    row0=헤더(타입+주차 결합, 예: "처방건수 2024년 40주(...)"), row1+=데이터
+   식별: drug.name 또는 drug.marketProduct가 제품 컬럼에 존재 (전방 일치)
+   필터: drug.excludeDosage 기준 제형 제외
+──────────────────────────────────────────────────────────────── */
+function matchProductName(cellVal, name) {
+  const p = String(cellVal || '').trim();
+  return p === name || p.startsWith(name + ' ');
+}
+
+function parseMarketSheet(ws, drug) {
+  const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+  if (raw.length < 2) return null;
+
+  // 포맷 감지: row0에 주차 라벨이 있으면 단일행 포맷
+  const singleRow = raw[0].some(cell => parseWeekLabel(cell) !== null);
+
+  const headerRow = singleRow ? raw[0] : raw[1];
+  const dataRows  = (singleRow ? raw.slice(1) : raw.slice(2)).filter(r => r.some(v => v != null));
+  // typeRow: 표준=raw[0], 단일행=headerRow 자체 (타입이 주차와 결합)
+  const typeRow   = singleRow ? raw[0] : raw[0];
+
+  if (dataRows.length === 0) return null;
+
+  // 제조사 우선, 없으면 판매사
+  const mfgIdx     = headerRow.findIndex(h => String(h||'').trim() === '제조사');
+  const sellerIdx  = headerRow.findIndex(h => String(h||'').trim() === '판매사');
+  const vendorIdx  = mfgIdx >= 0 ? mfgIdx : sellerIdx;
+  const productIdx = headerRow.findIndex(h => String(h||'').trim() === '제품');
+  const dosageIdx  = headerRow.findIndex(h => String(h||'').trim() === '제형');
+
+  if (vendorIdx < 0 || productIdx < 0) return null;
+
+  // drug.name 또는 marketProduct 행이 있어야 시장 파일로 인식 (전방 일치)
+  const hasMyProduct     = dataRows.some(r => matchProductName(r[productIdx], drug.name));
+  const hasMarketProduct = drug.marketProduct
+    ? dataRows.some(r => matchProductName(r[productIdx], drug.marketProduct))
+    : false;
+  if (!hasMyProduct && !hasMarketProduct) return null;
+
+  const rxCols  = [];
+  const qtyCols = [];
+  headerRow.forEach((h, i) => {
+    const weekId = parseWeekLabel(h);
+    if (!weekId) return;
+    // 단일행: 타입이 같은 셀에 포함됨 / 표준: typeRow에서 별도 추출
+    const typeCell = String(singleRow ? h : typeRow[i] || '');
+    if (typeCell.includes('처방건수')) rxCols.push({ idx: i, weekId });
+    else if (typeCell.includes('처방량')) qtyCols.push({ idx: i, weekId });
+  });
+
+  if (rxCols.length === 0 && qtyCols.length === 0) return null;
+
+  const excludeDosage = drug.excludeDosage ?? [];
+
+  const map = {};
+  for (const row of dataRows) {
+    const dosage = dosageIdx >= 0 ? String(row[dosageIdx] || '').trim() : '';
+    if (dosage && excludeDosage.length > 0) {
+      if (excludeDosage.some(ex => dosage.includes(ex))) continue;
+    }
+
+    const vendor      = String(row[vendorIdx]  || '').trim();
+    const rawProduct  = String(row[productIdx] || '').trim();
+    // drug.name 전방 일치면 canonical 이름으로 정규화 ("애니코프 캡슐 300mg" → "애니코프")
+    const product     = matchProductName(rawProduct, drug.name) ? drug.name : rawProduct;
+    if (!product || !vendor) continue;
+
+    const key = `${product}||${vendor}`;
+    if (!map[key]) map[key] = { product, vendor, dosage_forms: new Set() };
+    if (dosage) map[key].dosage_forms.add(dosage);
+
+    rxCols.forEach(({ idx, weekId }) => {
+      const v = row[idx];
+      map[key][`rx_${weekId}`] = (map[key][`rx_${weekId}`] || 0) + (typeof v === 'number' ? v : 0);
+    });
+    qtyCols.forEach(({ idx, weekId }) => {
+      const v = row[idx];
+      map[key][`qty_${weekId}`] = (map[key][`qty_${weekId}`] || 0) + (typeof v === 'number' ? v : 0);
+    });
+  }
+
+  if (Object.keys(map).length === 0) return null;
+
+  const allWeeks = [...new Set([...rxCols.map(c => c.weekId), ...qtyCols.map(c => c.weekId)])];
+
+  const rows = [];
+  for (const data of Object.values(map)) {
+    const dosage_form = [...data.dosage_forms].join('/');
+    for (const weekId of allWeeks) {
+      rows.push({
+        drug_id:     drug.dbId,
+        product:     data.product,
+        vendor:      data.vendor,
+        week_id:     weekId,
+        rx_value:    data[`rx_${weekId}`]  ?? 0,
+        qty_value:   data[`qty_${weekId}`] ?? 0,
+        dosage_form,   // 확인 페이지 표시용 — DB에는 저장하지 않음
+      });
+    }
+  }
+
+  return { drugId: drug.dbId, sheetName: `${drug.name} (시장 데이터)`, rows };
 }
 
 /* 메인: 특정 drug만 파싱 (개별 업로드용) */
@@ -366,9 +475,17 @@ export async function detectAndParse(file) {
         if (results.length === 0) {
           const firstSheet = wb.Sheets[wb.SheetNames[0]];
           if (firstSheet) {
+            // 1차: 제품명 기반 시장 파일 (경쟁사 포함 전체 데이터)
             for (const drug of DRUGS) {
-              const parsed = parseRawSheet(firstSheet, drug);
+              const parsed = parseMarketSheet(firstSheet, drug);
               if (parsed && parsed.rows.length > 0) results.push(parsed);
+            }
+            // 2차: 성분 기반 로우데이터 (시장 파일이 아닌 경우)
+            if (results.length === 0) {
+              for (const drug of DRUGS) {
+                const parsed = parseRawSheet(firstSheet, drug);
+                if (parsed && parsed.rows.length > 0) results.push(parsed);
+              }
             }
           }
         }
@@ -388,6 +505,74 @@ export async function detectAndParse(file) {
     reader.onerror = () => reject(new Error('파일을 읽을 수 없습니다.'));
     reader.readAsArrayBuffer(file);
   });
+}
+
+/**
+ * 다중 파일 파싱 — 애니코프 전용 (시장 파일 + 단독 파일 동시 업로드)
+ * 그 외 약품이 여러 파일로 들어오면 에러
+ */
+export async function detectAndParseMultiple(files) {
+  const fileArray = Array.from(files);
+
+  // 각 파일 개별 파싱
+  const allParsed = await Promise.all(fileArray.map(f => detectAndParse(f)));
+
+  // 타입 일관성 확인
+  const types = new Set(allParsed.map(p => p.type));
+  if (types.size > 1) throw new Error('처방 파일과 매출 파일을 함께 올릴 수 없습니다. 하나씩 올려주세요.');
+
+  // drugId별로 결과 집계 (어느 파일 몇 개에서 나왔는지)
+  const drugFileCount = {};
+  for (const parsed of allParsed) {
+    for (const r of parsed.results) {
+      drugFileCount[r.drugId] = (drugFileCount[r.drugId] || 0) + 1;
+    }
+  }
+
+  // anycof 외 약품이 여러 파일에서 나오면 차단
+  const nonAnycofMulti = Object.entries(drugFileCount)
+    .filter(([id, cnt]) => id !== 'anycof' && cnt > 1);
+  if (nonAnycofMulti.length > 0) {
+    throw new Error('애니코프 외 품목은 파일을 하나씩 올려주세요.');
+  }
+
+  // anycof가 없는데 여러 파일이면 차단
+  if (!drugFileCount['anycof']) {
+    throw new Error('여러 파일 업로드는 애니코프 전용입니다. 다른 품목은 하나씩 올려주세요.');
+  }
+
+  // anycof rows 병합
+  const mergedMap = {};
+  const skipped   = [];
+  for (const parsed of allParsed) {
+    for (const r of parsed.results) {
+      if (!mergedMap[r.drugId]) mergedMap[r.drugId] = { drugId: r.drugId, rows: [] };
+      mergedMap[r.drugId].rows.push(...r.rows);
+    }
+    skipped.push(...(parsed.skipped ?? []));
+  }
+
+  // anycof 검증: 시장 데이터 + 단독 데이터 둘 다 있어야 함
+  const anycof = mergedMap['anycof'];
+  if (anycof) {
+    const hasMarket     = anycof.rows.some(r => r.product && r.product !== '애니코프');
+    const hasStandalone = anycof.rows.some(r => r.product === '애니코프');
+    if (!hasMarket)     throw new Error('애니코프 시장 파일을 찾을 수 없습니다. (칼로민이 포함된 파일을 함께 올려주세요)');
+    if (!hasStandalone) throw new Error('애니코프 단독 데이터 파일을 찾을 수 없습니다. (애니코프 행이 있는 파일을 함께 올려주세요)');
+
+    // 최신 주차 일치 확인
+    const latestMarket = anycof.rows
+      .filter(r => r.product && r.product !== '애니코프')
+      .map(r => r.week_id).sort().at(-1);
+    const latestStandalone = anycof.rows
+      .filter(r => r.product === '애니코프')
+      .map(r => r.week_id).sort().at(-1);
+    if (latestMarket !== latestStandalone) {
+      throw new Error(`애니코프 두 파일의 최신 주차가 다릅니다. (시장: ${latestMarket}, 단독: ${latestStandalone})`);
+    }
+  }
+
+  return { type: [...types][0], results: Object.values(mergedMap), skipped };
 }
 
 /* 메인: 엑셀 파일 → 전체 파싱 결과 */
@@ -421,13 +606,19 @@ export async function parseBackDataFile(file) {
           }
         });
 
-        // 백데이터 탭 없으면 → 로우데이터(Sheet1) 폴백
+        // 백데이터 탭 없으면 → 시장파일 → 로우데이터 순서로 폴백
         if (results.length === 0) {
           const firstSheet = wb.Sheets[wb.SheetNames[0]];
           if (firstSheet) {
             for (const drug of DRUGS) {
-              const parsed = parseRawSheet(firstSheet, drug);
+              const parsed = parseMarketSheet(firstSheet, drug);
               if (parsed && parsed.rows.length > 0) results.push(parsed);
+            }
+            if (results.length === 0) {
+              for (const drug of DRUGS) {
+                const parsed = parseRawSheet(firstSheet, drug);
+                if (parsed && parsed.rows.length > 0) results.push(parsed);
+              }
             }
           }
         }

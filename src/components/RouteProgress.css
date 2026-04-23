@@ -1,0 +1,14 @@
+/* nprogress 기본 스타일 덮어쓰기 */
+
+#nprogress .bar {
+  background: var(--color-accent);
+  height: 2px;
+  box-shadow: none;
+}
+
+#nprogress .peg {
+  box-shadow:
+    0 0 8px var(--color-accent),
+    0 0 4px var(--color-accent);
+  opacity: 0.7;
+}

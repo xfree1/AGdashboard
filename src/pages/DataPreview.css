@@ -232,41 +232,56 @@
 
 .preview-table-wrap {
   overflow-x: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
   background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.preview-table-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 /* ── Table ──────────────────────────────────────── */
 
-.preview-table {
-  border-collapse: collapse;
-  font-size: var(--text-sm);
-  white-space: nowrap;
+/* .ag-table(0-1-0)보다 높은 명시도(0-2-0)로 확실히 오버라이드 */
+.preview-table.ag-table {
+  width: auto;                /* width:100% 해제 — overflow 허용 → 휠 스크롤 가능 */
   min-width: 100%;
+  border-collapse: separate;  /* sticky 열이 작동하려면 separate 필수 */
+  border-spacing: 0;
 }
 
-/* Head */
-.preview-th {
+/* Head — .ag-table th(0-1-1)보다 높은 명시도(0-2-1)로 오버라이드 */
+.preview-table.ag-table th {
   position: sticky;
   top: 0;
-  background: var(--color-surface-2);
-  padding: 10px var(--space-3);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  letter-spacing: 0.03em;
-  border-bottom: 1px solid var(--color-border);
+  background: var(--color-gray-blue-200);
+  padding: 8px var(--space-3);
+  font-size: var(--table-body-font);
+  color: var(--color-text-primary);
   z-index: 2;
+}
+
+.preview-th {
+  /* 컬럼별 오버라이드용 */
+}
+
+.preview-th:last-child {
+  border-right: none;
 }
 
 .preview-th--vendor {
   position: sticky;
   left: 0;
-  z-index: 3;
   text-align: left;
   min-width: 140px;
-  border-right: 1px solid var(--color-border);
+  background: var(--color-gray-blue-200);
+  box-shadow: inset -1px 0 0 var(--color-border);
+}
+/* .preview-table.ag-table th(명시도 0-2-1)보다 높아야 수평 스크롤 시 날짜 헤더에 가리지 않음 */
+.preview-table.ag-table th.preview-th--vendor {
+  z-index: 4;
 }
 
 .preview-th--week {
@@ -280,56 +295,62 @@
   transition: background var(--transition-fast);
 }
 
-.preview-row:hover {
-  background: var(--color-surface-2);
+.preview-row:hover .preview-td {
+  background: var(--table-hover-bg);
 }
 
-.preview-row + .preview-row > .preview-td {
-  border-top: 1px solid var(--color-border-light);
-}
-
-.preview-row--mine {
-  background: var(--color-accent-dim);
-}
-
-.preview-row--mine:hover {
-  background: var(--color-accent-mid);
+.preview-row--mine .preview-td,
+.preview-row--mine:hover .preview-td {
+  background: var(--table-highlight-bg);
 }
 
 .preview-row--mine .preview-td--vendor {
   font-weight: 700;
   color: var(--color-accent-dark);
+  background: var(--color-highlight) !important;
 }
 
-/* Cells */
+.preview-row--mine:hover .preview-td--vendor {
+  background: var(--color-highlight) !important;
+}
+
+/* Cells — .ag-table td(0-1-1)보다 높은 명시도(0-2-1)로 오버라이드 */
+.preview-table.ag-table td {
+  padding: 6px var(--space-3);
+}
+
 .preview-td {
-  padding: 10px var(--space-3);
-  vertical-align: middle;
+  /* 컬럼별 오버라이드용 */
+}
+
+.preview-td:last-child {
+  border-right: none;
+}
+
+.preview-table tbody tr:last-child .preview-td {
+  border-bottom: none;
 }
 
 .preview-td--vendor {
   position: sticky;
   left: 0;
-  background: inherit;
-  font-weight: 500;
+  background: var(--color-gray-50);
+  font-weight: 600;
   color: var(--color-text-primary);
-  border-right: 1px solid var(--color-border-light);
   z-index: 1;
+  border-right: none;
+  box-shadow: inset -1px 0 0 var(--color-border);
 }
 
-.preview-row--mine .preview-td--vendor {
-  background: var(--color-accent-dim);
-}
-
-.preview-row--mine:hover .preview-td--vendor {
-  background: var(--color-accent-mid);
+.preview-row:hover .preview-td--vendor {
+  background: var(--color-gray-100) !important;
 }
 
 .preview-td--value {
   text-align: right;
   font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  font-weight: 300;
 }
 
 .preview-td--zero {
@@ -373,10 +394,11 @@
   position: sticky;
   left: 0;
   top: 0;
-  background: var(--color-surface-2);
+  background: var(--color-gray-blue-300);
   font-weight: 600;
-  color: var(--color-text-secondary);
-  border-right: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  border-right: none;
+  box-shadow: inset -1px 0 0 var(--color-border);
   white-space: nowrap;
   width: 140px;
   min-width: 140px;
@@ -387,10 +409,11 @@
 .preview-td--sales-label {
   position: sticky;
   left: 0;
-  background: var(--color-surface-2);
+  background: var(--color-gray-50);
   font-weight: 600;
-  color: var(--color-text-secondary);
-  border-right: 1px solid var(--color-border-light);
+  color: var(--color-text-primary);
+  border-right: none;
+  box-shadow: inset -1px 0 0 var(--color-border);
   white-space: nowrap;
   width: 140px;
   min-width: 140px;
@@ -404,7 +427,7 @@
 }
 
 .preview-row--mine .preview-td--sales-label {
-  background: var(--color-accent-dim);
+  background: var(--color-highlight) !important;
   color: var(--color-accent-dark);
 }
 

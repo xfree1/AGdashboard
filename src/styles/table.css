@@ -1,0 +1,118 @@
+/* ================================================
+   AG Table — 공통 베이스
+   <table className="ag-table"> 하나만 추가하면
+   하위 th/td에 자동 적용된다.
+   컴포넌트 전용 클래스(.ubist-th, .cdt-th 등)가
+   동일 요소에 함께 있으면 더 높은 명시도로 오버라이드된다.
+   ================================================ */
+
+/* ── 테이블 래퍼 ── */
+.ag-table-wrap {
+  overflow-x: auto;
+}
+.ag-table-wrap--noscroll {
+  overflow-x: visible;
+}
+
+/* ── 테이블 베이스 ── */
+.ag-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font-sans);
+  font-size: var(--table-body-font);
+  white-space: nowrap;
+  width: 100%;
+}
+
+/* ── 헤더 셀 ── */
+.ag-table th {
+  padding: var(--table-th-pad);
+  text-align: center;
+  background: var(--table-header-bg);
+  border-bottom: 1px solid var(--table-border);
+  color: var(--table-header-color);
+  font-size: var(--table-header-font);
+  font-weight: var(--table-header-weight);
+  letter-spacing: 0.04em;
+}
+
+/* ── 바디 셀 ── */
+.ag-table td {
+  padding: var(--table-td-pad);
+  border-bottom: 1px solid var(--table-border);
+  text-align: center;
+  vertical-align: middle;
+  color: var(--table-body-color);
+  transition: background var(--transition-fast);
+}
+
+/* 마지막 행 하단 선 제거 */
+.ag-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── 행 상태 ── */
+
+/* zebra */
+.ag-tr--zebra td {
+  background: var(--table-zebra-bg);
+}
+
+/* hover */
+.ag-table tbody tr:hover td {
+  background: var(--table-hover-bg);
+}
+.ag-tr--zebra:hover td {
+  background: var(--table-hover-zebra-bg);
+}
+
+/* 강조 행 (안국약품 등) — hover에도 유지 */
+.ag-tr--highlight td,
+.ag-tr--highlight:hover td {
+  background: var(--table-highlight-bg) !important;
+}
+
+/* 내 행 (VendorTable) */
+.ag-tr--my td {
+  background: var(--table-my-bg);
+  font-weight: 600;
+}
+.ag-tr--my:hover td {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+/* Total 행 */
+.ag-tr--total td {
+  background: var(--table-total-bg);
+  font-weight: 600;
+}
+
+/* ── 증감 색상 ── */
+.ag-diff--up {
+  color: var(--table-diff-up);
+  font-variant-numeric: tabular-nums;
+}
+.ag-diff--down {
+  color: var(--table-diff-down);
+  font-variant-numeric: tabular-nums;
+}
+.ag-diff-arrow {
+  font-size: 0.6em;
+  margin-right: 2px;
+  vertical-align: middle;
+}
+
+/* ── 당월 컬럼 하이라이트 ── */
+.ag-table th.ag-col--cur,
+.ag-table td.ag-col--cur {
+  background: var(--table-cur-col-bg);
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+/* ── 숫자 셀 ── */
+.ag-table td.ag-td--num,
+.ag-table td.ubist-td--num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}

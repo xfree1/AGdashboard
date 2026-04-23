@@ -1,0 +1,321 @@
+/* ================================================
+   UbistSummary — 유비스트 요약 페이지
+   ================================================ */
+
+.ubist-wrap {
+  padding: var(--space-6);
+}
+
+/* ── 섹션 그룹 ── */
+.ubist-section-group {
+  margin-bottom: var(--space-6);
+}
+
+.ubist-section-group-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: 0 var(--space-1);
+}
+
+.ubist-col-label {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.ubist-col-label-note {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0 5px;
+}
+
+/* ── Section card ── */
+.ubist-section {
+  background: var(--color-surface);
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+  overflow: hidden;
+}
+
+.ubist-section:last-child {
+  margin-bottom: 0;
+}
+
+/* ── 타이틀 행 ── */
+.ubist-th--title-left,
+.ubist-th--title-right {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  padding: var(--space-3) var(--space-4);
+}
+
+.ubist-th--title-left {
+  text-align: left !important;
+  font-size: var(--text-lg) !important;
+}
+
+.ubist-th--title-right {
+  text-align: left !important;
+  font-size: var(--text-lg) !important;
+}
+
+/* ── Scroll wrapper ── */
+.ubist-scroll {
+  overflow-x: visible;
+}
+
+/* ── Col widths (colgroup 기반)
+   table-layout:fixed는 첫 행 colSpan 때문에 th width를 무시함.
+   col 요소로 직접 지정해야 두 테이블 레이블 열 너비가 일치함.
+   레이블 열: chan(44) + type(66) = wide(110) — 셋 합산 맞춰야 두 테이블 정렬됨
+   sticky left 오프셋도 chan 너비와 일치시킬 것 ── */
+col.ubist-col-chan      { width: 60px; }
+col.ubist-col-type      { width: 90px; }
+col.ubist-col-chan-wide { width: 150px; } /* = chan + type */
+col.ubist-col-data      { /* 나머지 균등 분배 */ }
+col.ubist-col-diff      { width: 80px; } /* 전월대비·전년대비 — 수치 열보다 좁게 */
+col.ubist-col-pct       { width: 64px; } /* % 전용 — 더 좁게 */
+
+/* ── Table base ── */
+.ubist-table {
+  table-layout: fixed;
+  min-width: 1440px;
+  /* 나머지는 .ag-table 에서 상속 */
+}
+
+/* 1행: 타이틀 */
+.ubist-th--group {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  text-align: left;
+  padding: var(--space-2) var(--space-4);
+}
+
+.ubist-th--group-acc {
+  background: var(--color-surface);
+  border-left: 2px solid var(--color-border-strong);
+}
+
+/* 타이틀 행 강조 — 어두운 네이비 */
+.ubist-th--group-accent {
+  background: var(--color-accent-dark) !important;
+  color: var(--color-sidebar-on-accent) !important;
+  border-bottom-color: var(--color-border) !important;
+}
+
+.ubist-th--group-accent .ubist-th-note {
+  color: color-mix(in srgb, var(--color-sidebar-on-accent) 75%, transparent);
+  border-color: color-mix(in srgb, var(--color-sidebar-on-accent) 35%, transparent);
+}
+
+/* 헤더 note 뱃지 */
+.ubist-th-note {
+  display: inline-block;
+  margin-left: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0 5px;
+}
+
+/* 구분 sticky 열 */
+.ubist-th--chan {
+  text-align: center;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--color-bg);
+  border-right: 1px solid var(--color-border);
+}
+
+.ubist-th--chan-wide {
+  /* ubist-th--chan과 함께 적용 — 너비는 colgroup에서 제어 */
+}
+
+/* 실적분류 sticky 열 */
+.ubist-th--type {
+  text-align: center;
+  position: sticky;
+  left: 60px; /* = ubist-col-chan 너비 */
+  z-index: 2;
+  background: var(--color-bg);
+  border-right: 1px solid var(--color-border);
+}
+
+/* 데이터 열 헤더 — 하단 구분선 */
+.ubist-th--data {
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* ── td 공통 — 패딩은 base --table-td-pad(6px 10px) 사용 ── */
+
+/* 안국실적 행 강조 */
+
+/* ── 제브라 줄무늬 ── */
+.ubist-tr--zebra .ubist-td {
+  background: var(--table-zebra-bg);
+}
+.ubist-tr--zebra .ubist-td--chan,
+.ubist-tr--zebra .ubist-td--type {
+  background: var(--table-zebra-bg) !important;
+}
+
+/* hover */
+.ubist-tr:not(.ubist-tr--anguk):hover .ubist-td {
+  background: var(--table-hover-bg);
+}
+.ubist-tr--zebra:not(.ubist-tr--anguk):hover .ubist-td {
+  background: var(--table-hover-zebra-bg);
+}
+.ubist-tr:not(.ubist-tr--anguk):hover .ubist-td--chan,
+.ubist-tr:not(.ubist-tr--anguk):hover .ubist-td--type {
+  background: var(--color-surface) !important;
+}
+.ubist-tr--zebra:hover .ubist-td--chan,
+.ubist-tr--zebra:hover .ubist-td--type {
+  background: var(--color-border) !important;
+}
+
+/* 마지막 행 border-bottom 제거 */
+.ubist-table tbody tr:last-child .ubist-td {
+  border-bottom: none;
+}
+
+/* 구분 sticky 열 */
+.ubist-td--chan {
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  text-align: center;
+  background: var(--color-surface);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  border-right: 1px solid var(--color-border);
+}
+
+.ubist-td--chan-wide {
+  text-align: left;
+  padding-left: var(--space-4);
+}
+
+/* 실적분류 sticky 열 */
+.ubist-td--type {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: center;
+  background: var(--color-surface);
+  position: sticky;
+  left: 60px; /* = ubist-col-chan 너비 */
+  z-index: 1;
+  border-right: 1px solid var(--color-border);
+}
+
+
+/* 그룹 시작 행 — 굵은 상단 구분선 */
+.ubist-tr--group-start .ubist-td {
+  border-top: 2px solid var(--color-border-group);
+}
+
+/* sticky 열 배경 고정 */
+.ubist-td--chan {
+  background: var(--color-surface-2) !important;
+}
+.ubist-td--type {
+  background: var(--color-surface) !important;
+}
+
+
+/* acc 컬럼 헤더 — 살짝 다른 색 */
+.ubist-thead-cols .ubist-th.ubist-col--acc {
+  background: var(--color-border) !important;
+}
+
+/* 컬럼명 행 전체 — 회색+파랑 혼합 */
+.ubist-thead-cols .ubist-th {
+  background: var(--color-gray-blue-200) !important;
+  color: var(--color-text-primary) !important;
+  border-bottom-color: var(--color-border) !important;
+  font-size: var(--text-sm);
+}
+
+/* 컬럼명 행 위쪽 모서리 라운딩 */
+.ubist-thead-cols th:first-child {
+  border-top-left-radius: var(--radius-md);
+}
+.ubist-thead-cols th:last-child {
+  border-top-right-radius: var(--radius-md);
+}
+
+/* ── Column group ── */
+
+/* 당년도 — 배경 없음 (직접 지정 예정) */
+/* .ubist-th.ubist-col--cy,
+.ubist-td.ubist-col--cy {} */
+
+
+/* 누계 섹션 세로 구분선 */
+.ubist-th.ubist-col--acc-start,
+.ubist-td.ubist-col--acc-start {
+  border-left: 1px solid var(--color-border);
+}
+
+/* 그룹 시작 열 구분선 */
+.ubist-th.ubist-col--gs,
+.ubist-td.ubist-col--gs {
+  border-left: 1px solid var(--color-border);
+}
+
+/* 강조 열 (25년 3월, 26년 3월) — 볼드만 유지 */
+.ubist-td.ubist-col--hl {
+  font-weight: 700;
+}
+
+/* ── 안국약품 행 강조 ── */
+.ubist-tr--anguk .ubist-td {
+  background: var(--color-highlight) !important;
+}
+
+.ubist-tr--anguk .ubist-td--chan {
+  background: var(--color-highlight) !important;
+  color: var(--color-primary) !important;
+}
+
+.ubist-tr--anguk:hover .ubist-td {
+  background: var(--color-highlight) !important;
+}
+
+.ubist-anguk-badge {
+  display: inline-block;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 0 4px;
+  margin-right: 5px;
+  letter-spacing: 0;
+  vertical-align: middle;
+}
+
+/* ── 증감 색상 — ag-diff--up / ag-diff--down 으로 통합됨 ── */
+/* 하위 호환: ubist-diff--* 클래스는 ag-diff--* 와 동일 */
+.ubist-diff--up   { color: var(--table-diff-up);   font-variant-numeric: tabular-nums; }
+.ubist-diff--down { color: var(--table-diff-down); font-variant-numeric: tabular-nums; }
+.ubist-diff-arrow { font-size: 0.6em; margin-right: 2px; vertical-align: middle; }
