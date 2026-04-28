@@ -41,14 +41,30 @@ export function satToWeekId(sat) {
 }
 
 /**
- * weekId → { year, month }  (토요일 기준 달 귀속)
+ * weekId → { year, month }  (일~토 7일 중 4일 이상인 달 귀속)
+ * 토요일 기준 대신 과반수 달을 사용하므로 연말-연초 경계도 올바르게 처리한다.
  * @param {string} weekId
  * @returns {{ year: number, month: number }|null}
  */
 export function weekIdToYearMonth(weekId) {
   const sat = weekIdToSat(weekId);
   if (!sat) return null;
-  return { year: sat.getFullYear(), month: sat.getMonth() + 1 };
+  const sun = new Date(sat);
+  sun.setDate(sat.getDate() - 6); // 주 시작: 일요일
+  const counts = {};
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(sun);
+    d.setDate(sun.getDate() + i);
+    const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+    counts[key] = (counts[key] || 0) + 1;
+  }
+  // 7일이므로 반드시 4일 이상인 달이 하나 존재 (최대 동률 없음)
+  let bestKey = null, bestCount = 0;
+  for (const [key, count] of Object.entries(counts)) {
+    if (count > bestCount) { bestCount = count; bestKey = key; }
+  }
+  const [yearStr, monthStr] = bestKey.split('-');
+  return { year: parseInt(yearStr, 10), month: parseInt(monthStr, 10) };
 }
 
 /**

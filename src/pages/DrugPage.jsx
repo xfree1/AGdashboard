@@ -51,7 +51,7 @@ export default function DrugPage() {
   }
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="drug-page-wrap">
       {loading && <div className="upload-loading-bar" />}
       {error && (
         <div className="upload-error-toast">

@@ -101,7 +101,7 @@ col.wt-col-product { width: 180px; }
 col.wt-col-mfr     { width: 110px; }
 col.wt-col-stat    { width: 96px;  }
 /* 월/주차 컬럼 — 고정 너비 → 테이블이 자연스럽게 가로로 넓어짐 */
-col.wt-col-week    { width: 110px; }
+col.wt-col-week    { width: 120px; }
 col.wt-col-avg     { width: 110px; }
 
 /* ── 테이블 ─────────────────────────────────── */
@@ -116,7 +116,7 @@ col.wt-col-avg     { width: 110px; }
 
 /* ── 헤더 셀 공통 ───────────────────────────── */
 .wt-th {
-  padding: 8px 6px;
+  padding: var(--space-2) var(--space-1-5);
   background: var(--color-gray-blue-200);
   color: var(--color-text-primary);
   font-weight: 600;
@@ -177,8 +177,10 @@ col.wt-col-avg     { width: 110px; }
   color: var(--color-accent);
 }
 
-/* 주차 날짜 헤더 (펼쳐진 상태) — 기본 wt-th 스타일 그대로 */
-.wt-th--week-date {}
+/* 주차 날짜 헤더 (펼쳐진 상태) — 범위 텍스트가 길어서 작은 폰트 적용 */
+.wt-th--week-date {
+  font-size: var(--text-xs);
+}
 
 /* 주차 셀 — 클릭으로 접기 */
 .wt-th--week-toggle {
@@ -214,7 +216,7 @@ col.wt-col-avg     { width: 110px; }
 
 /* ── 바디 셀 공통 ───────────────────────────── */
 .wt-td {
-  padding: 6px 6px;
+  padding: var(--space-1-5);
   border-bottom: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
   white-space: nowrap;

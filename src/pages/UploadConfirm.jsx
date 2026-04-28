@@ -252,14 +252,31 @@ export default function UploadConfirm() {
 
         for (const { drugId, rows } of parsed.results) {
           if (!checkedDrugs.has(drugId)) continue; // 체크 해제된 품목 스킵
-          for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-            const batch = rows.slice(i, i + BATCH_SIZE).map(
-              ({ drug_id, product, vendor, week_id, rx_value, qty_value }) =>
-                ({ drug_id, product, vendor, week_id, rx_value, qty_value })
-            );
+
+          // 기존 데이터 전체 삭제 후 새 데이터 삽입 (stale row 방지)
+          const { error: delErr } = await supabase
+            .from('weekly_data')
+            .delete()
+            .eq('drug_id', drugId);
+          if (delErr) throw new Error(`기존 데이터 삭제 실패: ${delErr.message}`);
+
+          // 파서 버그 방어: 동일 키 중복 row 합산 제거
+          const dedupMap = {};
+          for (const { drug_id, product, vendor, week_id, rx_value, qty_value } of rows) {
+            const key = `${drug_id}||${product}||${vendor}||${week_id}`;
+            if (!dedupMap[key]) {
+              dedupMap[key] = { drug_id, product, vendor, week_id, rx_value: 0, qty_value: 0 };
+            }
+            dedupMap[key].rx_value  += rx_value  ?? 0;
+            dedupMap[key].qty_value += qty_value ?? 0;
+          }
+          const dedupedRows = Object.values(dedupMap);
+
+          for (let i = 0; i < dedupedRows.length; i += BATCH_SIZE) {
+            const batch = dedupedRows.slice(i, i + BATCH_SIZE);
             const { error: err } = await supabase
               .from('weekly_data')
-              .upsert(batch, { onConflict: 'drug_id,product,vendor,week_id' });
+              .insert(batch);
             if (err) throw new Error(err.message);
           }
         }
@@ -344,7 +361,7 @@ export default function UploadConfirm() {
             <thead>
               <tr>
                 <th className="preview-th preview-th--vendor">월</th>
-                <th className="preview-th preview-th--week" style={{ textAlign: 'right' }}>처방조제액(원)</th>
+                <th className="preview-th preview-th--week">처방조제액(원)</th>
               </tr>
             </thead>
             <tbody>
@@ -624,7 +641,7 @@ export default function UploadConfirm() {
                     type="checkbox"
                     className="uc-tab-check"
                     checked={checkedDrugs.has(tab.drugId)}
-                    disabled={false}
+                    disabled={hasAnomaly}
                     onChange={() => {}}
                     onClick={e => { e.stopPropagation(); if (!hasAnomaly) toggleDrug(tab.drugId); }}
                   />
@@ -636,6 +653,13 @@ export default function UploadConfirm() {
           })}
         </div>
       </div>
+
+      {saveError && (
+        <div className="admin-error admin-error--mb">
+          {saveError}
+          <button className="admin-error__close" onClick={() => setSaveError('')}>✕</button>
+        </div>
+      )}
 
       {renderContent()}
     </AdminLayout>

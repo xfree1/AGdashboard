@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { DRUGS } from '../config/drugs';
-import { WEEKLY_SECTION_CONFIG, WEEKLY_PRODUCT_FILTER } from '../config/weeklyConfig';
+import { WEEKLY_SECTION_CONFIG, WEEKLY_PRODUCT_FILTER, PCAB_NPCAB_DB_ID, WEEKLY_PRODUCT_ALIAS } from '../config/weeklyConfig';
 import { loadWeeklyRaw } from '../utils/supabaseLoader';
-import { weekIdToYearMonth } from '../utils/weekUtils';
+import { weekIdToYearMonth, weekIdToSat } from '../utils/weekUtils';
 import MainLayout from '../components/MainLayout';
 import './WeeklyPage.css';
 
@@ -11,13 +11,14 @@ import './WeeklyPage.css';
 /* ────────────────────────────────────────────────
    weekly_data → WeeklyPage 포맷 변환 (M/S 계산 포함)
 ──────────────────────────────────────────────── */
-function buildRowsFromWeeklyData(rawData, drug, sectionConfig, productFilter) {
+function buildRowsFromWeeklyData(rawData, drug, sectionConfig, productFilter, productAlias) {
   const grouped    = {};  // `product||vendor` → week_id → { qty, rx }
   const weekTotals = {};  // week_id → { qty, rx } (전체 시장 합계 — Others 계산에 필요)
 
   for (const row of rawData) {
-    const product  = (row.product || '').trim();
-    const vendor   = (row.vendor  || '').trim();
+    const rawProduct = (row.product || '').trim();
+    const product    = productAlias?.[rawProduct] ?? rawProduct;
+    const vendor     = (row.vendor  || '').trim();
     const weekId   = row.week_id;
     const key      = `${product}||${vendor}`;
 
@@ -164,7 +165,9 @@ function buildSections(rawRows, sectionConfig, maxProducts, productFilter) {
     const orderMap = productFilter
       ? Object.fromEntries(productFilter.map((p, i) => [p, i]))
       : null;
-    const sorted = Object.values(productMap).sort((a, b) => {
+    const items = Object.values(productMap);
+    const sumCache = new Map(items.map(r => [r, Object.values(r.values).reduce((s, v) => s + (v ?? 0), 0)]));
+    const sorted = items.sort((a, b) => {
       const rank = r => r.product === '전체' ? 2 : r.product === 'Others' ? 1 : 0;
       const ra = rank(a), rb = rank(b);
       if (ra !== rb) return ra - rb;
@@ -173,16 +176,28 @@ function buildSections(rawRows, sectionConfig, maxProducts, productFilter) {
         const ob = orderMap[b.product] ?? orderMap[b.manufacturer] ?? 999;
         if (oa !== ob) return oa - ob;
       }
-      const sum = r => Object.values(r.values).reduce((s, v) => s + (v ?? 0), 0);
-      return sum(b) - sum(a);
+      return (sumCache.get(b) ?? 0) - (sumCache.get(a) ?? 0);
     });
-    // 필터 미지정 시 상위 N개만 표시 (전체/Others 제외 후 슬라이스)
-    const rows = maxProducts
-      ? [
-          ...sorted.filter(r => r.product !== '전체' && r.product !== 'Others').slice(0, maxProducts),
-          ...sorted.filter(r => r.product === 'Others' || r.product === '전체'),
-        ]
-      : sorted;
+    // 필터 미지정 시 상위 N개 + Others 자동 생성
+    let rows;
+    if (maxProducts) {
+      const nonSpecial = sorted.filter(r => r.product !== '전체' && r.product !== 'Others');
+      const topN = nonSpecial.slice(0, maxProducts);
+      const rest = nonSpecial.slice(maxProducts);
+      const othersValues = {};
+      rest.forEach(r => {
+        Object.entries(r.values).forEach(([weekId, val]) => {
+          othersValues[weekId] = (othersValues[weekId] ?? 0) + (val ?? 0);
+        });
+      });
+      rows = [
+        ...topN,
+        { product: 'Others', manufacturer: '', values: othersValues },
+        ...sorted.filter(r => r.product === '전체'),
+      ];
+    } else {
+      rows = sorted;
+    }
     return { ...cfg, weeks: [...weekSet].sort(), rows };
   });
 }
@@ -211,6 +226,20 @@ function monthAvg(row, mo) {
   return vals.reduce((s, v) => s + v, 0) / vals.length;
 }
 
+// MS 섹션 월평균: 주별 MS% 평균이 아닌, 처방량 절댓값 기준 가중 MS%
+// pairedIdx: Map<"product||mfr", row> — 없으면 pairedRawRows 배열에서 find() 폴백
+function monthAvgWeighted(row, mo, pairedRawRows, pairedIdx) {
+  if (!pairedRawRows) return monthAvg(row, mo);
+  const key         = `${row.product}||${row.manufacturer}`;
+  const rawRow      = pairedIdx ? pairedIdx.get(key) : pairedRawRows.find(r => r.product === row.product && r.manufacturer === row.manufacturer);
+  const totalRawRow = pairedIdx ? pairedIdx.get('전체||') : pairedRawRows.find(r => r.product === '전체');
+  if (!rawRow || !totalRawRow) return monthAvg(row, mo);
+  const sumRow   = mo.weeks.reduce((s, w) => s + (rawRow.values[w]      ?? 0), 0);
+  const sumTotal = mo.weeks.reduce((s, w) => s + (totalRawRow.values[w] ?? 0), 0);
+  if (sumTotal === 0) return null;
+  return sumRow / sumTotal;
+}
+
 function calcWoWGrowth(row, weeks) {
   if (weeks.length < 2) return null;
   const cur  = row.values[weeks[weeks.length - 1]];
@@ -219,10 +248,13 @@ function calcWoWGrowth(row, weeks) {
   return (cur / prev - 1) * 100;
 }
 
-function calcMoMGrowth(row, allMonths) {
+function calcMoMGrowth(row, allMonths, pairedRawRows, pairedIdx) {
   if (allMonths.length < 2) return null;
-  const cur  = monthAvg(row, allMonths[allMonths.length - 1]);
-  const prev = monthAvg(row, allMonths[allMonths.length - 2]);
+  const getAvg = (mo) => pairedRawRows
+    ? monthAvgWeighted(row, mo, pairedRawRows, pairedIdx)
+    : monthAvg(row, mo);
+  const cur  = getAvg(allMonths[allMonths.length - 1]);
+  const prev = getAvg(allMonths[allMonths.length - 2]);
   if (cur == null || prev == null || prev === 0) return null;
   return (cur / prev - 1) * 100;
 }
@@ -231,19 +263,12 @@ function calcMoMGrowth(row, allMonths) {
    포맷 헬퍼
 ──────────────────────────────────────────────── */
 function weekLabel(weekId) {
-  const m = String(weekId || '').match(/(\d{2})\.(\d{2})주/);
-  if (!m) return weekId;
-  const year     = 2000 + parseInt(m[1], 10);
-  const weekNum  = parseInt(m[2], 10);
-  const jan4     = new Date(year, 0, 4);
-  const dow      = jan4.getDay() || 7;
-  const week1Mon = new Date(jan4);
-  week1Mon.setDate(jan4.getDate() - (dow - 1));
-  const sat = new Date(week1Mon);
-  sat.setDate(week1Mon.getDate() + (weekNum - 1) * 7 + 5);
-  const mm = String(sat.getMonth() + 1).padStart(2, '0');
-  const dd = String(sat.getDate()).padStart(2, '0');
-  return `${mm}.${dd}`;
+  const sat = weekIdToSat(weekId);
+  if (!sat) return weekId;
+  const sun = new Date(sat);
+  sun.setDate(sat.getDate() - 6);
+  const fmt = d => `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+  return `${fmt(sun)}~${fmt(sat)}`;
 }
 
 const fmtMs  = v => v == null ? '-' : v >= 1 ? '100.0%' : (v * 100).toFixed(1) + '%';
@@ -292,9 +317,18 @@ function WeeklySkeleton() {
 /* ────────────────────────────────────────────────
    섹션 테이블
 ──────────────────────────────────────────────── */
-function SectionTable({ section, visibleMonths, allMonths, expandedMonths, onToggle, myVendor, onWheelNav, sectionIdx, registerRef, currentMonthKey }) {
+function SectionTable({ section, visibleMonths, allMonths, expandedMonths, onToggle, myVendor, onWheelNav, sectionIdx, registerRef, currentMonthKey, pairedRawRows }) {
   const { rows, weeks, valueType } = section;
+  const msRawRows = valueType === 'ms' ? pairedRawRows : null;
   const wrapRef = useRef(null);
+
+  // pairedRawRows를 Map으로 인덱싱 — 렌더마다 find() O(n) 반복 방지
+  const msRawIdx = useMemo(() => {
+    if (!msRawRows) return null;
+    const m = new Map();
+    for (const r of msRawRows) m.set(`${r.product}||${r.manufacturer}`, r);
+    return m;
+  }, [msRawRows]);
 
   const setRef = useCallback((el) => {
     wrapRef.current = el;
@@ -346,7 +380,7 @@ function SectionTable({ section, visibleMonths, allMonths, expandedMonths, onTog
               if (isOpen) {
                 return (
                   <React.Fragment key={mo.key}>
-                    {weeksDesc.map((w, wi) => (
+                    {weeksDesc.map((w) => (
                       <th
                         key={w}
                         className="wt-th wt-th--week-date wt-th--week-toggle"
@@ -387,7 +421,7 @@ function SectionTable({ section, visibleMonths, allMonths, expandedMonths, onTog
                 }
                 {(() => {
                   const wow = calcWoWGrowth(row, weeks);
-                  const mom = calcMoMGrowth(row, allMonths);
+                  const mom = calcMoMGrowth(row, allMonths, msRawRows, msRawIdx);
                   return (<>
                     <td className={`wt-td wt-td--stat wt-td--stat-sticky wt-stat-s1 ${growthClass(wow)}`}>
                       {fmtGrowth(wow)}
@@ -401,7 +435,9 @@ function SectionTable({ section, visibleMonths, allMonths, expandedMonths, onTog
                 {visibleMonths.map(mo => {
                   const isOpen    = expandedMonths.has(mo.key);
                   const weeksDesc = [...mo.weeks].reverse();
-                  const avg       = monthAvg(row, mo);
+                  const avg       = msRawRows
+                    ? monthAvgWeighted(row, mo, msRawRows, msRawIdx)
+                    : monthAvg(row, mo);
                   const isCurrent = mo.key === currentMonthKey;
 
                   if (isOpen) {
@@ -446,28 +482,53 @@ export default function WeeklyPage() {
   const sectionWrapRefs = useRef({});
 
   useEffect(() => {
-    if (!drugId) return;
+    if (!drugId || !drug) return;
     setRawRows(null);
     setExpandedMonths(new Set());
 
-    loadWeeklyRaw(drug?.dbId ?? drugId)
-      .then(data => {
-        if (!data || data.length === 0) { setRawRows([]); return; }
-        const filter = WEEKLY_PRODUCT_FILTER[drugId] ?? null;
-        setRawRows(buildRowsFromWeeklyData(data, drug, sectionConfig, filter));
+    const filter      = WEEKLY_PRODUCT_FILTER[drugId] ?? null;
+    const npcabDbId   = PCAB_NPCAB_DB_ID[drugId];
+    const npcabFilter = npcabDbId ? (WEEKLY_PRODUCT_FILTER[npcabDbId] ?? filter) : filter;
+    const npcabAlias  = npcabDbId ? (WEEKLY_PRODUCT_ALIAS[npcabDbId] ?? null) : null;
+    const pcabOutCfg  = sectionConfig.filter(s => s.scope === 'pcab_out');
+    const pcabInCfg   = sectionConfig.filter(s => s.scope !== 'pcab_out');
+
+    const loadIn  = pcabInCfg.length > 0
+      ? loadWeeklyRaw(drug?.dbId ?? drugId)
+      : Promise.resolve([]);
+    const loadOut = pcabOutCfg.length > 0 && npcabDbId
+      ? loadWeeklyRaw(npcabDbId)
+      : Promise.resolve([]);
+
+    Promise.all([loadIn, loadOut])
+      .then(([allData, ppiData]) => {
+        const rows = [];
+        if (pcabInCfg.length > 0 && allData.length > 0) {
+          rows.push(...buildRowsFromWeeklyData(allData, drug, pcabInCfg, filter));
+        }
+        if (pcabOutCfg.length > 0 && ppiData.length > 0) {
+          rows.push(...buildRowsFromWeeklyData(ppiData, drug, pcabOutCfg, npcabFilter, npcabAlias));
+        }
+        setRawRows(rows);
       })
       .catch(() => setRawRows([]));
   }, [drugId, drug, sectionConfig]);
 
-  // 필터 미지정 약품은 상위 5개만 표시
-  const maxProducts = WEEKLY_PRODUCT_FILTER[drugId] ? null : 5;
-
   const productFilter = WEEKLY_PRODUCT_FILTER[drugId] ?? null;
+  const maxProducts   = productFilter ? null : 5;
 
   const sections = useMemo(() => {
     if (!rawRows) return [];
-    return buildSections(rawRows, sectionConfig, maxProducts, productFilter);
-  }, [rawRows, sectionConfig, maxProducts, productFilter]);
+    const npcabDbId   = PCAB_NPCAB_DB_ID[drugId];
+    const npcabFilter = npcabDbId ? (WEEKLY_PRODUCT_FILTER[npcabDbId] ?? productFilter) : productFilter;
+    const pcabInCfg   = sectionConfig.filter(s => s.scope !== 'pcab_out');
+    const pcabOutCfg  = sectionConfig.filter(s => s.scope === 'pcab_out');
+    const pcabInRows  = rawRows.filter(r => r.market_scope !== 'pcab_out');
+    const pcabOutRows = rawRows.filter(r => r.market_scope === 'pcab_out');
+    const inSecs  = pcabInCfg.length  > 0 ? buildSections(pcabInRows,  pcabInCfg,  maxProducts, productFilter) : [];
+    const outSecs = pcabOutCfg.length > 0 ? buildSections(pcabOutRows, pcabOutCfg, maxProducts, npcabFilter)   : [];
+    return [...inSecs, ...outSecs];
+  }, [rawRows, sectionConfig, maxProducts, productFilter, drugId]);
 
   const allMonths = useMemo(() => {
     const allWeeks = new Set();
@@ -503,6 +564,17 @@ export default function WeeklyPage() {
   const scrollTargetRef = useRef(null);   // 목표 scrollLeft
   const rafRef = useRef(null);
 
+  // drugId 변경(또는 unmount) 시 진행 중인 애니메이션 강제 종료
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      scrollTargetRef.current = null;
+    };
+  }, [drugId]);
+
   const handleSectionWheel = useCallback((e) => {
     const delta = Math.abs(e.deltaX) >= Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
     if (Math.abs(delta) < 1) return;
@@ -522,6 +594,11 @@ export default function WeeklyPage() {
     if (rafRef.current) return; // 이미 애니메이션 중
 
     const animate = () => {
+      if (!lead.isConnected) {
+        rafRef.current = null;
+        scrollTargetRef.current = null;
+        return;
+      }
       const target = scrollTargetRef.current;
       const current = lead.scrollLeft;
       const diff = target - current;
@@ -570,28 +647,34 @@ export default function WeeklyPage() {
 
         {rawRows === null && <WeeklySkeleton />}
 
-        {rawRows !== null && sections.map((section, i) => (
-          <div key={i} className="wt-section">
-            <div className="wt-section-header">
-              <span className="wt-section-title">
-                {section.title}
-                <span className="wt-section-note">{section.note}</span>
-              </span>
+        {rawRows !== null && sections.map((section, i) => {
+          const pairedRawRows = section.valueType === 'ms'
+            ? sections.find(s => s.valueType === 'raw' && s.scope === section.scope && s.metric === section.metric)?.rows ?? null
+            : null;
+          return (
+            <div key={i} className="wt-section">
+              <div className="wt-section-header">
+                <span className="wt-section-title">
+                  {section.title}
+                  <span className="wt-section-note">{section.note}</span>
+                </span>
+              </div>
+              <SectionTable
+                section={section}
+                visibleMonths={visibleMonths}
+                allMonths={allMonths}
+                expandedMonths={expandedMonths}
+                onToggle={toggleMonth}
+                myVendor={drug.myVendor}
+                onWheelNav={handleSectionWheel}
+                sectionIdx={i}
+                registerRef={registerRef}
+                currentMonthKey={currentMonthKey}
+                pairedRawRows={pairedRawRows}
+              />
             </div>
-            <SectionTable
-              section={section}
-              visibleMonths={visibleMonths}
-              allMonths={allMonths}
-              expandedMonths={expandedMonths}
-              onToggle={toggleMonth}
-              myVendor={drug.myVendor}
-              onWheelNav={handleSectionWheel}
-              sectionIdx={i}
-              registerRef={registerRef}
-              currentMonthKey={currentMonthKey}
-            />
-          </div>
-        ))}
+          );
+        })}
 
       </div>
     </MainLayout>

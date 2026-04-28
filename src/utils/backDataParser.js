@@ -205,6 +205,84 @@ function parseRawSheet(ws, drug) {
   return { drugId: drug.dbId, sheetName: `${drug.name} (로우데이터)`, rows };
 }
 
+/* ── 브랜드 기반 시장 파일 파서 (폴락스 등) ─────────────────────
+   구조: row0=타입, row1=헤더(ATC·제품·브랜드·제조사·성분·주차...), row2+=데이터
+   브랜드(C열)를 집계 키로 사용, drug.brandMerges로 브랜드 합산 처리
+──────────────────────────────────────────────────────────────── */
+function parseBrandMarketSheet(ws, drug) {
+  const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+  if (raw.length < 3) return null;
+
+  const typeRow   = raw[0];
+  const headerRow = raw[1];
+  const dataRows  = raw.slice(2).filter(r => r.some(v => v != null));
+
+  const brandIdx = headerRow.findIndex(h => String(h || '').trim() === '브랜드');
+  if (brandIdx < 0) return null;
+
+  const atcIdx = headerRow.findIndex(h => String(h || '').trim() === 'ATC');
+
+  const qtyCols = [];
+  headerRow.forEach((h, i) => {
+    const weekId = parseWeekLabel(h);
+    if (!weekId) return;
+    if (String(typeRow[i] || '').includes('처방량')) qtyCols.push({ idx: i, weekId });
+  });
+
+  if (qtyCols.length === 0) return null;
+
+  const mfrIdx = headerRow.findIndex(h => String(h || '').trim() === '제조사');
+
+  const brandMerges      = drug.brandMerges      ?? {};
+  const atcBrandWhitelist = drug.atcBrandWhitelist ?? {};
+  const brandMap = {};
+  const brandMfr = {};  // brand → 제조사 (첫 등장 값 사용)
+
+  for (const row of dataRows) {
+    const rawBrand = String(row[brandIdx] || '').trim();
+    if (!rawBrand) continue;
+    const brand = brandMerges[rawBrand] ?? rawBrand;
+
+    // ATC 화이트리스트 필터: 특정 ATC 내에서 허용 브랜드 외 제외
+    if (atcIdx >= 0 && Object.keys(atcBrandWhitelist).length > 0) {
+      const atc = String(row[atcIdx] || '').trim();
+      if (atcBrandWhitelist[atc] && !atcBrandWhitelist[atc].includes(brand)) continue;
+    }
+
+    if (!brandMap[brand]) {
+      brandMap[brand] = {};
+      if (mfrIdx >= 0 && !brandMfr[brand]) {
+        brandMfr[brand] = String(row[mfrIdx] || '').trim();
+      }
+    }
+
+    qtyCols.forEach(({ idx, weekId }) => {
+      const v = row[idx];
+      brandMap[brand][`qty_${weekId}`] = (brandMap[brand][`qty_${weekId}`] || 0) + (typeof v === 'number' ? v : 0);
+    });
+  }
+
+  if (Object.keys(brandMap).length === 0) return null;
+
+  const allWeeks = [...new Set(qtyCols.map(c => c.weekId))];
+  const rows = [];
+  for (const [brand, weekData] of Object.entries(brandMap)) {
+    const vendor = brandMfr[brand] || brand;
+    for (const weekId of allWeeks) {
+      rows.push({
+        drug_id:   drug.dbId,
+        product:   brand,
+        vendor,
+        week_id:   weekId,
+        rx_value:  0,
+        qty_value: weekData[`qty_${weekId}`] ?? 0,
+      });
+    }
+  }
+
+  return { drugId: drug.dbId, sheetName: `${drug.name} (브랜드 시장 데이터)`, rows };
+}
+
 /* ── 시장 파일 파서 ────────────────────────────────────────────
    지원 포맷:
    A) 표준(2행): row0=타입, row1=헤더(컬럼명·주차), row2+=데이터
@@ -441,6 +519,77 @@ function parseSalesRawFile(wb) {
   return { type: 'sales', results };
 }
 
+/* ── 레토프라 위클리 시장 파일 파서 ───────────────────────────────
+   구조: row0=타입(처방량), row1=헤더(ATC·제품·브랜드·제조사·성분·주차...), row2+=데이터
+   브랜드를 집계 키로 사용, drug_id='retopra'로 저장
+   감지 조건: 브랜드·ATC·제조사 컬럼 모두 존재 AND 데이터에 '레토프라' 브랜드 포함
+──────────────────────────────────────────────────────────────────── */
+function parseRetopraWeeklySheet(ws) {
+  const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+  if (raw.length < 3) return null;
+
+  const typeRow   = raw[0];
+  const headerRow = raw[1];
+  const dataRows  = raw.slice(2).filter(r => r.some(v => v != null));
+
+  const atcIdx   = headerRow.findIndex(h => String(h || '').trim() === 'ATC');
+  const brandIdx = headerRow.findIndex(h => String(h || '').trim() === '브랜드');
+  const mfrIdx   = headerRow.findIndex(h => String(h || '').trim() === '제조사');
+  if (atcIdx < 0 || brandIdx < 0 || mfrIdx < 0) return null;
+
+  const hasRetopra = dataRows.some(r => String(r[brandIdx] || '').trim() === '레토프라');
+  if (!hasRetopra) return null;
+
+  const qtyCols = [];
+  headerRow.forEach((h, i) => {
+    const weekId = parseWeekLabel(h);
+    if (!weekId) return;
+    if (String(typeRow[i] || '').includes('처방량')) qtyCols.push({ idx: i, weekId });
+  });
+  if (qtyCols.length === 0) return null;
+
+  const ingIdx = headerRow.findIndex(h => String(h || '').trim() === '성분');
+
+  const brandMap = {};
+  const brandMfr = {};
+  const brandIng = {};
+  for (const row of dataRows) {
+    const brand = String(row[brandIdx] || '').trim();
+    const mfr   = String(row[mfrIdx]   || '').trim();
+    const ing   = ingIdx >= 0 ? String(row[ingIdx] || '').trim() : '';
+    if (!brand) continue;
+    if (!brandMap[brand]) {
+      brandMap[brand] = {};
+      brandMfr[brand] = mfr;
+      brandIng[brand] = ing;
+    }
+    qtyCols.forEach(({ idx, weekId }) => {
+      const v = row[idx];
+      brandMap[brand][`qty_${weekId}`] = (brandMap[brand][`qty_${weekId}`] || 0) + (typeof v === 'number' ? v : 0);
+    });
+  }
+
+  if (Object.keys(brandMap).length === 0) return null;
+
+  const allWeeks = [...new Set(qtyCols.map(c => c.weekId))];
+  const allRows = [];
+  const ppiRows = [];
+  for (const [brand, weekData] of Object.entries(brandMap)) {
+    const vendor  = brandMfr[brand] || brand;
+    const isPcab  = (brandIng[brand] || '').toLowerCase().includes('prazan');
+    for (const weekId of allWeeks) {
+      const base = { product: brand, vendor, week_id: weekId, rx_value: 0, qty_value: weekData[`qty_${weekId}`] ?? 0 };
+      allRows.push({ ...base, drug_id: 'retopra' });
+      if (!isPcab) ppiRows.push({ ...base, drug_id: 'retopra_npcab' });
+    }
+  }
+
+  return [
+    { drugId: 'retopra',       sheetName: '레토프라 (PPI·P-CAB 시장)', rows: allRows },
+    { drugId: 'retopra_npcab', sheetName: '레토프라 (PPI 시장)',        rows: ppiRows },
+  ];
+}
+
 /* ── 자동 감지 + 파싱 (Admin Import 진입점) ── */
 export async function detectAndParse(file) {
   return new Promise((resolve, reject) => {
@@ -475,16 +624,35 @@ export async function detectAndParse(file) {
         if (results.length === 0) {
           const firstSheet = wb.Sheets[wb.SheetNames[0]];
           if (firstSheet) {
-            // 1차: 제품명 기반 시장 파일 (경쟁사 포함 전체 데이터)
-            for (const drug of DRUGS) {
-              const parsed = parseMarketSheet(firstSheet, drug);
-              if (parsed && parsed.rows.length > 0) results.push(parsed);
-            }
-            // 2차: 성분 기반 로우데이터 (시장 파일이 아닌 경우)
-            if (results.length === 0) {
+            const sheetHeader = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: null })[1] ?? [];
+            const hasBrandCol = sheetHeader.some(h => String(h || '').trim() === '브랜드');
+
+            if (hasBrandCol) {
+              // 레토프라 위클리 파일 우선 감지 (브랜드+ATC 구조)
+              const retopraParsed = parseRetopraWeeklySheet(firstSheet);
+              if (retopraParsed) {
+                retopraParsed.forEach(r => { if (r.rows.length > 0) results.push(r); });
+              }
+              if (results.length === 0) {
+                // 브랜드 컬럼 기반 파서 (폴락스 등 marketByBrand 품목)
+                for (const drug of DRUGS) {
+                  if (!drug.marketByBrand) continue;
+                  const parsed = parseBrandMarketSheet(firstSheet, drug);
+                  if (parsed && parsed.rows.length > 0) results.push(parsed);
+                }
+              }
+            } else {
+              // 1차: 제품명 기반 시장 파일 (경쟁사 포함 전체 데이터)
               for (const drug of DRUGS) {
-                const parsed = parseRawSheet(firstSheet, drug);
+                const parsed = parseMarketSheet(firstSheet, drug);
                 if (parsed && parsed.rows.length > 0) results.push(parsed);
+              }
+              // 2차: 성분 기반 로우데이터 (시장 파일이 아닌 경우)
+              if (results.length === 0) {
+                for (const drug of DRUGS) {
+                  const parsed = parseRawSheet(firstSheet, drug);
+                  if (parsed && parsed.rows.length > 0) results.push(parsed);
+                }
               }
             }
           }

@@ -83,7 +83,7 @@ export const DRUGS = [
     id: 'retopra',
     dbId: 'retopra',
     name: '레토프라',
-    ingredient: ['rabeprazole'],
+    ingredient: ['s-pantoprazole'],
     excludeIngredient: [],
     myVendor: '안국약품',
     metric: 'qty',
@@ -103,6 +103,15 @@ export const DRUGS = [
     topN: 5,
     showGR: true,
     showDonut: true,
-    // 데이터 확인법: 미확인 — 확인 후 업데이트 필요
+    marketByBrand: true,
+    brandMerges: {
+      '마그밀에스':  '마그밀',
+      '듀락칸 이지': '듀락칸',
+      '둘코락스 에스': '둘코락스',
+    },
+    // 특정 ATC 카테고리 내에서 허용할 브랜드 지정 (미지정 ATC는 전체 허용)
+    atcBrandWhitelist: {
+      '[A2A1] 단일제산제': ['마그밀'],
+    },
   },
 ];

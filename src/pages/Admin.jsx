@@ -10,7 +10,7 @@ import './DataPreview.css';
 const TABS = ['처방', '매출'];
 
 /* 검수 완료된 품목만 업로드 허용 */
-const WEEKLY_ALLOWED = new Set(['levo_tension', 'levo_saltan', 'sinectura', 'rupafin', 'anycof', 'eze_pita']);
+const WEEKLY_ALLOWED = new Set(['levo_tension', 'levo_saltan', 'sinectura', 'rupafin', 'anycof', 'eze_pita', 'polax', 'retopra', 'retopra_npcab']);
 
 function getPeriodStart() {
   const now = new Date();
