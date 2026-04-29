@@ -16,13 +16,15 @@ export default function DrugPage() {
   const [result, setResult]   = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
     NProgress.start();
     setError('');
     setLoading(true);
     loadDrugData(drug)
-      .then(data  => { setResult(data); })
-      .catch(()   => { setResult(buildDummyDrugData(drug)); })
-      .finally(() => { setLoading(false); NProgress.done(); });
+      .then(data => { if (!cancelled) setResult(data); })
+      .catch(()  => { if (!cancelled) setResult(buildDummyDrugData(drug)); })
+      .finally(() => { if (!cancelled) { setLoading(false); NProgress.done(); } });
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drugId]);
 

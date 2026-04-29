@@ -90,14 +90,15 @@ export function buildDummyDrugData(drug) {
 /**
  * 품목별 최신 week_id 조회 — 사이드바 업데이트 뱃지 초기 로딩에 사용
  * localStorage 미등록 품목에 한해 호출됨
+ * @param {{ id: string, dbId: string }[]} drugs
  */
-export async function loadLatestWeekPerDrug(drugIds) {
+export async function loadLatestWeekPerDrug(drugs) {
   const results = await Promise.all(
-    drugIds.map(async (id) => {
+    drugs.map(async ({ id, dbId }) => {
       const { data } = await supabase
         .from('weekly_data')
         .select('week_id')
-        .eq('drug_id', id)
+        .eq('drug_id', dbId ?? id)
         .order('week_id', { ascending: false })
         .limit(1);
       return [id, data?.[0]?.week_id ?? null];
@@ -113,15 +114,21 @@ export async function loadLatestWeekPerDrug(drugIds) {
 export async function loadWeeklyRaw(drugId) {
   const PAGE = 1000;
 
-  const { count } = await supabase
+  const { count, error: countErr } = await supabase
     .from('weekly_data')
     .select('*', { count: 'exact', head: true })
     .eq('drug_id', drugId)
     .neq('product', '');
 
+  if (countErr) {
+    console.error(`[loadWeeklyRaw] ${drugId} count 쿼리 실패:`, countErr);
+    return [];
+  }
   if (!count) return [];
 
   const pages = Math.ceil(count / PAGE);
+  console.debug(`[loadWeeklyRaw] ${drugId}: 총 ${count}행, ${pages}페이지 로드 시작`);
+
   const results = await Promise.all(
     Array.from({ length: pages }, (_, i) =>
       supabase
@@ -129,12 +136,27 @@ export async function loadWeeklyRaw(drugId) {
         .select('product, vendor, week_id, rx_value, qty_value')
         .eq('drug_id', drugId)
         .neq('product', '')
+        // ★ 3-key 정렬: week_id만 쓰면 동일 week_id 내 순서가 쿼리마다 달라져
+        //   병렬 페이지 요청 시 경계 로우가 누락·중복될 수 있다.
         .order('week_id', { ascending: true })
+        .order('product',  { ascending: true, nullsFirst: false })
+        .order('vendor',   { ascending: true, nullsFirst: false })
         .range(i * PAGE, (i + 1) * PAGE - 1)
     )
   );
 
-  return results.flatMap(({ data }) => data ?? []);
+  const rows = results.flatMap(({ data, error }) => {
+    if (error) console.error(`[loadWeeklyRaw] ${drugId} 페이지 쿼리 실패:`, error);
+    return data ?? [];
+  });
+
+  if (rows.length !== count) {
+    console.warn(`[loadWeeklyRaw] ${drugId}: count=${count} 인데 실제 수신=${rows.length} — 페이지 누락 의심`);
+  } else {
+    console.debug(`[loadWeeklyRaw] ${drugId}: ${rows.length}행 정상 수신`);
+  }
+
+  return rows;
 }
 
 export async function loadMonthlySales(drugId) {

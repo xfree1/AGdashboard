@@ -89,8 +89,8 @@ export default function Sidebar() {
 
   // localStorage 미등록 품목은 Supabase에서 1회 조회 후 캐시
   useEffect(() => {
-    const missing = DRUGS.map(d => d.id).filter(
-      id => !localStorage.getItem(`ag_weekly_latest_${id}`)
+    const missing = DRUGS.filter(
+      d => !localStorage.getItem(`ag_weekly_latest_${d.id}`)
     );
     if (missing.length === 0) return;
     loadLatestWeekPerDrug(missing).then(result => {
