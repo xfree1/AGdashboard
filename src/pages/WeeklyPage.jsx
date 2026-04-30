@@ -17,8 +17,10 @@ function buildRowsFromWeeklyData(rawData, drug, sectionConfig, productFilter, pr
 
   for (const row of rawData) {
     const rawProduct = (row.product || '').trim();
-    const product    = productAlias?.[rawProduct] ?? rawProduct;
     const vendor     = (row.vendor  || '').trim();
+    const product    = rawProduct
+      ? (productAlias?.[rawProduct] ?? rawProduct)
+      : (productAlias?.[vendor] ?? '');
     const weekId   = row.week_id;
     const key      = `${product}||${vendor}`;
 
@@ -275,22 +277,23 @@ function monthAvgWeighted(row, mo, pairedRawRows, pairedIdx) {
   return sumRow / sumTotal;
 }
 
-function calcWoWGrowth(row, weeks) {
+function calcWoWGrowth(row, weeks, isMs) {
   if (weeks.length < 2) return null;
   const cur  = row.values[weeks[weeks.length - 1]];
   const prev = row.values[weeks[weeks.length - 2]];
-  if (cur == null || prev == null || prev === 0) return null;
+  if (cur == null || prev == null) return null;
+  if (isMs) return (cur - prev) * 100;
+  if (prev === 0) return null;
   return (cur / prev - 1) * 100;
 }
 
-function calcMoMGrowth(row, allMonths, pairedRawRows, pairedIdx) {
-  if (allMonths.length < 2) return null;
-  const getAvg = (mo) => pairedRawRows
-    ? monthAvgWeighted(row, mo, pairedRawRows, pairedIdx)
-    : monthAvg(row, mo);
-  const cur  = getAvg(allMonths[allMonths.length - 1]);
-  const prev = getAvg(allMonths[allMonths.length - 2]);
-  if (cur == null || prev == null || prev === 0) return null;
+function calc4WAgoGrowth(row, weeks, isMs) {
+  if (weeks.length < 5) return null;
+  const cur  = row.values[weeks[weeks.length - 1]];
+  const prev = row.values[weeks[weeks.length - 5]];
+  if (cur == null || prev == null) return null;
+  if (isMs) return (cur - prev) * 100;
+  if (prev === 0) return null;
   return (cur / prev - 1) * 100;
 }
 
@@ -403,7 +406,7 @@ const SectionTable = React.memo(function SectionTable({ section, visibleMonths, 
             <th className="wt-th wt-th--fixed wt-th--product">제품</th>
             <th className="wt-th wt-th--fixed wt-th--mfr">제조사</th>
             <th className="wt-th wt-th--stat wt-th--stat-sticky wt-stat-s1">전주대비</th>
-            <th className="wt-th wt-th--stat wt-th--stat-sticky wt-stat-s2 wt-stat-last">전월대비</th>
+            <th className="wt-th wt-th--stat wt-th--stat-sticky wt-stat-s2 wt-stat-last">4주대비</th>
 
             {visibleMonths.map(mo => {
               const isOpen      = expandedMonths.has(mo.key);
@@ -519,6 +522,7 @@ export default function WeeklyPage() {
     let cancelled = false;
 
     const filter      = WEEKLY_PRODUCT_FILTER[drugId] ?? null;
+    const alias       = WEEKLY_PRODUCT_ALIAS[drugId] ?? null;
     const npcabDbId   = PCAB_NPCAB_DB_ID[drugId];
     const npcabFilter = npcabDbId ? (WEEKLY_PRODUCT_FILTER[npcabDbId] ?? filter) : filter;
     const npcabAlias  = npcabDbId ? (WEEKLY_PRODUCT_ALIAS[npcabDbId] ?? null) : null;
@@ -538,7 +542,7 @@ export default function WeeklyPage() {
         console.debug(`[WeeklyPage] ${drugId}: pcabIn=${allData.length}행, pcabOut=${ppiData.length}행 수신`);
         const rows = [];
         if (pcabInCfg.length > 0 && allData.length > 0) {
-          rows.push(...buildRowsFromWeeklyData(allData, drug, pcabInCfg, filter));
+          rows.push(...buildRowsFromWeeklyData(allData, drug, pcabInCfg, filter, alias));
         }
         if (pcabOutCfg.length > 0 && ppiData.length > 0) {
           rows.push(...buildRowsFromWeeklyData(ppiData, drug, pcabOutCfg, npcabFilter, npcabAlias));
@@ -572,25 +576,17 @@ export default function WeeklyPage() {
     const outSecs = pcabOutCfg.length > 0 ? buildSections(pcabOutRows, pcabOutCfg, maxProducts, npcabFilter)   : [];
     const allSecs = [...inSecs, ...outSecs];
 
-    // allMonths를 여기서 미리 계산해 growth pre-computation에 활용
-    const allWeeks = new Set();
-    allSecs.forEach(s => s.weeks.forEach(w => allWeeks.add(w)));
-    const allMo = groupWeeksByMonth([...allWeeks].sort());
-
     return allSecs.map(section => {
       const pairedRawRows = section.valueType === 'ms'
         ? allSecs.find(s => s.valueType === 'raw' && s.scope === section.scope && s.metric === section.metric)?.rows ?? null
-        : null;
-      const pairedIdx = pairedRawRows
-        ? new Map(pairedRawRows.map(r => [`${r.product}||${r.manufacturer}`, r]))
         : null;
       const isMsSection = section.valueType === 'ms';
       const rows = section.rows.map(row => {
         const isTotal = row.product === '전체';
         return {
           ...row,
-          wowGrowth: (isMsSection && isTotal) ? null : calcWoWGrowth(row, section.weeks),
-          momGrowth: (isMsSection && isTotal) ? null : calcMoMGrowth(row, allMo, pairedRawRows, pairedIdx),
+          wowGrowth: (isMsSection && isTotal) ? null : calcWoWGrowth(row, section.weeks, isMsSection),
+          momGrowth: (isMsSection && isTotal) ? null : calc4WAgoGrowth(row, section.weeks, isMsSection),
         };
       });
       return { ...section, rows, pairedRawRows };

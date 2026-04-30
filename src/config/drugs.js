@@ -71,7 +71,7 @@ export const DRUGS = [
     name: '애니코프',
     ingredient: ['levodropropizine'],
     excludeIngredient: [],
-    excludeDosage: ['(SY)', '(LQ)', '(IJ)'],
+    excludeDosage: ['(SY)', '(LQ)', '(IJ)', '(SS)'],
     marketProduct: '칼로민',  // 시장 파일 감지용 — 이 제품명이 있으면 anycof 시장 파일로 인식
     myVendor: '안국약품',
     metric: 'qty',
