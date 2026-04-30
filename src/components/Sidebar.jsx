@@ -65,11 +65,7 @@ export default function Sidebar() {
   const navigate       = useNavigate();
   const { pathname }   = useLocation();
 
-  // pathname 기반으로 열릴 패널 결정
-  const panelFromPath = pathname.startsWith('/weekly/') ? 'weekly'
-    : pathname.startsWith('/drug/')   ? '8dae'
-    : pathname.startsWith('/ubist/')  ? 'ubist'
-    : null;
+  const panelFromPath = pathname.startsWith('/weekly/') ? 'weekly' : null;
 
   const [openPanel,   setOpenPanel]   = useState(panelFromPath);
   const [latestWeeks, setLatestWeeks] = useState(() => {
@@ -108,11 +104,8 @@ export default function Sidebar() {
 
   const toggle = (key) => setOpenPanel(prev => prev === key ? null : key);
 
-  const isDashActive   = pathname === '/dashboard';
-  const isUbistActive  = pathname.startsWith('/ubist/');
   const isWeeklyActive = pathname.startsWith('/weekly/');
   const isAdminActive  = pathname.startsWith('/admin');
-  const is8daeActive   = pathname.startsWith('/drug/');
 
   return (
     <>
@@ -123,8 +116,8 @@ export default function Sidebar() {
         <div className="sb__rail-nav">
           {/* 대시보드 */}
           <div
-            className={`sb__rail-item${isDashActive ? ' active' : ''}`}
-            onClick={() => { navigate('/dashboard'); setOpenPanel(null); }}
+            className={`sb__rail-item${openPanel === 'dashboard' ? ' active' : ''}`}
+            onClick={() => toggle('dashboard')}
             title="대시보드"
           >
             <IconGrid />
@@ -141,7 +134,7 @@ export default function Sidebar() {
 
           {/* 8대품목 Monthly */}
           <div
-            className={`sb__rail-item${is8daeActive || openPanel === '8dae' ? ' active' : ''}`}
+            className={`sb__rail-item${openPanel === '8dae' ? ' active' : ''}`}
             onClick={() => toggle('8dae')}
             title="8대품목 Monthly"
           >
@@ -150,7 +143,7 @@ export default function Sidebar() {
 
           {/* 유비스트 요약 */}
           <div
-            className={`sb__rail-item${isUbistActive || openPanel === 'ubist' ? ' active' : ''}`}
+            className={`sb__rail-item${openPanel === 'ubist' ? ' active' : ''}`}
             onClick={() => toggle('ubist')}
             title="유비스트 요약"
           >
@@ -179,6 +172,19 @@ export default function Sidebar() {
 
       {/* ── Slide Panel ── */}
       <div className={`sb__panel${openPanel ? '' : ' sb__panel--hidden'}`}>
+
+        {/* 대시보드 패널 */}
+        {openPanel === 'dashboard' && (
+          <>
+            <div className="sb__panel-header">
+              <span>대시보드</span>
+              <button className="sb__panel-close" onClick={() => setOpenPanel(null)} aria-label="닫기">✕</button>
+            </div>
+            <div className="sb__panel-body sb__panel-body--empty">
+              <span>준비 중</span>
+            </div>
+          </>
+        )}
 
         {/* 8대품목 Weekly 패널 */}
         {openPanel === 'weekly' && (
@@ -215,10 +221,10 @@ export default function Sidebar() {
               {DRUGS.map((drug) => (
                 <div
                   key={drug.id}
-                  className={`sb__panel-subitem${pathname === '/drug/' + drug.id ? ' active' : ''}`}
-                  onClick={() => navigate('/drug/' + drug.id)}
+                  className="sb__panel-subitem sb__panel-subitem--soon"
                 >
                   {drug.name}
+                  <span className="sb__panel-soon-badge">준비 중</span>
                 </div>
               ))}
             </div>
@@ -234,25 +240,24 @@ export default function Sidebar() {
             </div>
             <div className="sb__panel-body">
               {[
-                { label: '3월 D1 요약',           path: '/ubist/summary' },
-                { label: '제약사별 전체',           path: '/ubist/company-all' },
-                { label: '제약사별 의원',           path: '/ubist/company-clinic' },
-                { label: '제약사별 종병',           path: '/ubist/company-hosp' },
-                { label: '순위그래프 (안국)',        path: null },
-                { label: '순위그래프 (종병300↑↓)',  path: null },
-                { label: '안국 전체',               path: '/ubist/anguk-all' },
-                { label: '안국 의원',               path: null },
-                { label: '안국 종병',               path: null },
-                { label: '집중품목',                path: null },
-                { label: '포트폴리오',              path: null },
-              ].map(({ label, path }) => (
+                '3월 D1 요약',
+                '제약사별 전체',
+                '제약사별 의원',
+                '제약사별 종병',
+                '순위그래프 (안국)',
+                '순위그래프 (종병300↑↓)',
+                '안국 전체',
+                '안국 의원',
+                '안국 종병',
+                '집중품목',
+                '포트폴리오',
+              ].map((label) => (
                 <div
                   key={label}
-                  className={`sb__panel-subitem${pathname === path ? ' active' : ''}${!path ? ' sb__panel-subitem--soon' : ''}`}
-                  onClick={() => { if (path) navigate(path); }}
+                  className="sb__panel-subitem sb__panel-subitem--soon"
                 >
                   {label}
-                  {!path && <span className="sb__panel-soon-badge">준비 중</span>}
+                  <span className="sb__panel-soon-badge">준비 중</span>
                 </div>
               ))}
             </div>
