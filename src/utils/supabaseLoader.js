@@ -117,8 +117,7 @@ export async function loadWeeklyRaw(drugId) {
   const { count, error: countErr } = await supabase
     .from('weekly_data')
     .select('*', { count: 'exact', head: true })
-    .eq('drug_id', drugId)
-    .neq('product', '');
+    .eq('drug_id', drugId);
 
   if (countErr) {
     console.error(`[loadWeeklyRaw] ${drugId} count 쿼리 실패:`, countErr);
@@ -135,7 +134,6 @@ export async function loadWeeklyRaw(drugId) {
         .from('weekly_data')
         .select('product, vendor, week_id, rx_value, qty_value')
         .eq('drug_id', drugId)
-        .neq('product', '')
         // ★ 3-key 정렬: week_id만 쓰면 동일 week_id 내 순서가 쿼리마다 달라져
         //   병렬 페이지 요청 시 경계 로우가 누락·중복될 수 있다.
         .order('week_id', { ascending: true })
