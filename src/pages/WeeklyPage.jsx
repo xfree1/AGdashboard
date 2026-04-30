@@ -560,6 +560,8 @@ export default function WeeklyPage() {
 
   const sections = useMemo(() => {
     if (!rawRows) return [];
+    // drugId가 바뀐 직후 rawRows에 이전 약품 데이터가 남아있을 수 있음 → 무시
+    if (rawRows.length > 0 && rawRows[0].drug_id !== drugId) return [];
     const npcabDbId   = PCAB_NPCAB_DB_ID[drugId];
     const npcabFilter = npcabDbId ? (WEEKLY_PRODUCT_FILTER[npcabDbId] ?? productFilter) : productFilter;
     const pcabInCfg   = sectionConfig.filter(s => s.scope !== 'pcab_out');
@@ -710,10 +712,9 @@ export default function WeeklyPage() {
           </div>
         </div>
 
-        {rawRows === null && <WeeklySkeleton />}
+        {(rawRows === null || (rawRows.length > 0 && rawRows[0].drug_id !== drugId)) && <WeeklySkeleton />}
 
-        {rawRows !== null && sections.map((section, i) => {
-          return (
+        {rawRows !== null && !(rawRows.length > 0 && rawRows[0].drug_id !== drugId) && sections.map((section, i) => (
             <div key={i} className="wt-section">
               <div className="wt-section-header">
                 <span className="wt-section-title">
@@ -763,8 +764,7 @@ export default function WeeklyPage() {
                 currentMonthKey={currentMonthKey}
               />
             </div>
-          );
-        })}
+          ))}
 
       </div>
     </MainLayout>
