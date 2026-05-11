@@ -57,18 +57,20 @@ async function fetchExisting(drugId) {
 
   const existingMap   = {};  // `product||vendor` → week_id → { rx, qty }
   const existingWeeks = new Set();
+  const existingKeys  = new Set();  // `product||vendor||week_id` 조합 — 실제 중복 판단 기준
 
   for (const row of allData) {
     existingWeeks.add(row.week_id);
-    const key = `${row.product || ''}||${row.vendor || ''}`;
-    if (!existingMap[key]) existingMap[key] = {};
-    existingMap[key][row.week_id] = {
+    const pvKey = `${row.product || ''}||${row.vendor || ''}`;
+    if (!existingMap[pvKey]) existingMap[pvKey] = {};
+    existingMap[pvKey][row.week_id] = {
       rx:  row.rx_value  ?? 0,
       qty: row.qty_value ?? 0,
     };
+    existingKeys.add(`${pvKey}||${row.week_id}`);
   }
 
-  return { existingMap, existingWeeks };
+  return { existingMap, existingWeeks, existingKeys };
 }
 
 /** 파싱된 rows → (product||vendor) × week 집계 맵 */
@@ -198,17 +200,17 @@ export default function UploadConfirm() {
     parsed.results.forEach(({ drugId, rows }) => {
       setTabState(prev => ({
         ...prev,
-        [drugId]: { loading: true, existingMap: {}, existingWeeks: new Set(), error: '', anomalies: [] },
+        [drugId]: { loading: true, existingMap: {}, existingWeeks: new Set(), existingKeys: new Set(), error: '', anomalies: [] },
       }));
       const drug   = findDrug(drugId);
       const metric = drug?.metric ?? 'qty';
       fetchExisting(drugId)
-        .then(({ existingMap, existingWeeks }) => {
+        .then(({ existingMap, existingWeeks, existingKeys }) => {
           const parsedAgg = aggregate(rows);
           const anomalies = checkAnomalies(parsedAgg, existingMap, existingWeeks, metric);
           setTabState(prev => ({
             ...prev,
-            [drugId]: { loading: false, existingMap, existingWeeks, error: '', anomalies },
+            [drugId]: { loading: false, existingMap, existingWeeks, existingKeys, error: '', anomalies },
           }));
         })
         .catch(e => {
@@ -253,16 +255,18 @@ export default function UploadConfirm() {
         for (const { drugId, rows } of parsed.results) {
           if (!checkedDrugs.has(drugId)) continue; // 체크 해제된 품목 스킵
 
-          // 기존 데이터 전체 삭제 후 새 데이터 삽입 (stale row 방지)
-          const { error: delErr } = await supabase
-            .from('weekly_data')
-            .delete()
-            .eq('drug_id', drugId);
-          if (delErr) throw new Error(`기존 데이터 삭제 실패: ${delErr.message}`);
+          // (product, vendor, week_id) 조합 기준으로 없는 행만 추출
+          // — week_id만 보면 다른 제품이 있는 주차에서 누락 제품이 건너뛰어지는 버그 방지
+          const existingKeys = tabState[drugId]?.existingKeys ?? new Set();
+          const newRows = rows.filter(r => {
+            const key = `${r.product || ''}||${r.vendor || ''}||${r.week_id}`;
+            return !existingKeys.has(key);
+          });
+          if (newRows.length === 0) continue;
 
           // 파서 버그 방어: 동일 키 중복 row 합산 제거
           const dedupMap = {};
-          for (const { drug_id, product, vendor, week_id, rx_value, qty_value } of rows) {
+          for (const { drug_id, product, vendor, week_id, rx_value, qty_value } of newRows) {
             const key = `${drug_id}||${product}||${vendor}||${week_id}`;
             if (!dedupMap[key]) {
               dedupMap[key] = { drug_id, product, vendor, week_id, rx_value: 0, qty_value: 0 };
@@ -282,10 +286,16 @@ export default function UploadConfirm() {
         }
         for (const { drugId, rows } of parsed.results) {
           if (!checkedDrugs.has(drugId)) continue;
-          const drug       = findDrug(drugId);
+          const drug = findDrug(drugId);
           if (!drug) continue;
-          const latestWeek = rows.map(r => r.week_id).filter(Boolean).sort().at(-1);
-          if (latestWeek) localStorage.setItem(`ag_weekly_latest_${drug.id}`, latestWeek);
+          const existingWeeks = tabState[drugId]?.existingWeeks ?? new Set();
+          const hasNewRows    = rows.some(r => !existingWeeks.has(r.week_id));
+          if (!hasNewRows) continue;
+          const latestWeek    = rows.map(r => r.week_id).filter(Boolean).sort().at(-1);
+          const currentLatest = localStorage.getItem(`ag_weekly_latest_${drug.id}`);
+          if (latestWeek && (!currentLatest || latestWeek > currentLatest)) {
+            localStorage.setItem(`ag_weekly_latest_${drug.id}`, latestWeek);
+          }
           localStorage.setItem(`ag_upload_${drug.id}_처방`, now);
         }
       }

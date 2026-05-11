@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DRUGS } from '../config/drugs';
 import { detectAndParse } from '../utils/backDataParser';
+import { loadAdminUploadDates } from '../utils/supabaseLoader';
+import { fmtWeekDate, weekIdToSat } from '../utils/weekUtils';
 import AdminLayout from '../components/AdminLayout';
 import './Admin.css';
 import './DataPreview.css';
@@ -20,30 +22,31 @@ function getPeriodStart() {
   return new Date(now.getFullYear(), now.getMonth() - 1, 5);
 }
 
-function getStorageKey(drugId, tab) {
-  return `ag_upload_${drugId}_${tab}`;
+function formatMonthId(monthId) {
+  // "2026-04" → "26.04"
+  if (!monthId) return null;
+  const [year, month] = monthId.split('-');
+  return `${String(year).slice(2)}.${month}`;
 }
 
-function formatDate(date) {
-  const y = String(date.getFullYear()).slice(2);
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}.${m}.${d}`;
-}
-
-function DrugRow({ drug, idx }) {
+function DrugRow({ drug, idx, dates }) {
   const navigate = useNavigate();
-
-  const [uploadedAtMap] = useState(() => {
-    const map = {};
-    for (const tab of TABS) {
-      const v = localStorage.getItem(getStorageKey(drug.id, tab));
-      map[tab] = v ? new Date(v) : null;
-    }
-    return map;
-  });
-
   const periodStart = getPeriodStart();
+
+  const rxSat   = dates?.weekId  ? weekIdToSat(dates.weekId)       : null;
+  const salesDt = dates?.monthId ? new Date(dates.monthId + '-01') : null;
+
+  const rxActive    = rxSat   !== null && rxSat   >= periodStart;
+  const salesActive = salesDt !== null && salesDt >= periodStart;
+
+  let displayDate = null;
+  if (rxSat && salesDt) {
+    displayDate = rxSat >= salesDt ? fmtWeekDate(dates.weekId) : formatMonthId(dates.monthId);
+  } else if (rxSat) {
+    displayDate = fmtWeekDate(dates.weekId);
+  } else if (salesDt) {
+    displayDate = formatMonthId(dates.monthId);
+  }
 
   return (
     <tr className={`upload-row${idx % 2 === 1 ? ' ag-tr--zebra' : ''}`}>
@@ -52,14 +55,11 @@ function DrugRow({ drug, idx }) {
       </td>
       <td className="upload-td upload-td--date">
         <span className="upload-date-value">
-          {Object.values(uploadedAtMap).find(Boolean)
-            ? formatDate(Object.values(uploadedAtMap).filter(Boolean).sort((a,b) => b-a)[0])
-            : '-'}
+          {displayDate ?? '-'}
         </span>
       </td>
       {TABS.map(tab => {
-        const at = uploadedAtMap[tab];
-        const active = at !== null && at >= periodStart;
+        const active = tab === '처방' ? rxActive : salesActive;
         return (
           <td key={tab} className="upload-td upload-td--tab">
             <span className={`upload-status-dot${active ? ' upload-status-dot--on' : ''}`} />
@@ -85,7 +85,7 @@ function DrugRow({ drug, idx }) {
   );
 }
 
-function DrugTable({ drugs }) {
+function DrugTable({ drugs, uploadDates }) {
   return (
     <div className="upload-table-wrap">
       <table className="upload-table ag-table">
@@ -102,7 +102,7 @@ function DrugTable({ drugs }) {
         </thead>
         <tbody>
           {drugs.map((drug, idx) => (
-            <DrugRow key={drug.dbId} drug={drug} idx={idx} />
+            <DrugRow key={drug.dbId} drug={drug} idx={idx} dates={uploadDates[drug.id] ?? null} />
           ))}
         </tbody>
       </table>
@@ -136,16 +136,17 @@ function mergeAnycof(firstParsed, secondParsed) {
   if (!hasMarket)     throw new Error('애니코프 시장 파일을 찾을 수 없습니다.');
   if (!hasStandalone) throw new Error('애니코프 단독 데이터 파일을 찾을 수 없습니다.');
 
-  const latestMarket     = merged.filter(r => r.product && r.product !== '애니코프').map(r => r.week_id).sort().at(-1);
-  const latestStandalone = merged.filter(r => r.product === '애니코프').map(r => r.week_id).sort().at(-1);
-  if (latestMarket !== latestStandalone) {
-    throw new Error(`두 파일의 최신 주차가 다릅니다. (시장: ${latestMarket}, 단독: ${latestStandalone})`);
-  }
+  // 두 파일의 공통 주차(교집합)만 사용 — 한 쪽이 더 긴 기간이어도 누락 셀 방지
+  const marketWeeks     = new Set(merged.filter(r => r.product && r.product !== '애니코프').map(r => r.week_id));
+  const standaloneWeeks = new Set(merged.filter(r => r.product === '애니코프').map(r => r.week_id));
+  const commonWeeks     = new Set([...marketWeeks].filter(w => standaloneWeeks.has(w)));
+  if (commonWeeks.size === 0) throw new Error('두 파일의 공통 주차가 없습니다. 기간을 확인해주세요.');
+  const trimmed = merged.filter(r => commonWeeks.has(r.week_id));
 
   return {
     type: firstParsed.type,
     results: [
-      { drugId: 'anycof', rows: merged },
+      { drugId: 'anycof', rows: trimmed },
       ...firstParsed.results.filter(r => r.drugId !== 'anycof'),
       ...secondParsed.results.filter(r => r.drugId !== 'anycof'),
     ],
@@ -159,10 +160,15 @@ export default function Admin() {
   const importRef    = React.useRef(null);
   const secondRef    = React.useRef(null);
 
+  const [uploadDates,   setUploadDates]   = useState({});
   const [importing,     setImporting]     = useState(false);
   const [importErr,     setImportErr]     = useState('');
   const [dragging,      setDragging]      = useState(false);
   const [pendingAnycof, setPendingAnycof] = useState(null);
+
+  useEffect(() => {
+    loadAdminUploadDates(DRUGS).then(setUploadDates).catch(() => {});
+  }, []);
   // pendingAnycof = { parsed, neededType: 'market'|'standalone', firstFileName }
 
   /* ── 공통 파일 파싱 ── */
@@ -357,7 +363,7 @@ export default function Admin() {
             </div>
           </div>
         )}
-        <DrugTable drugs={DRUGS} />
+        <DrugTable drugs={DRUGS} uploadDates={uploadDates} />
       </div>
 
       {/* 애니코프 두 번째 파일 요청 모달 */}

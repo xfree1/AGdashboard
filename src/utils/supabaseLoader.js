@@ -88,6 +88,39 @@ export function buildDummyDrugData(drug) {
 }
 
 /**
+ * 관리자 페이지용 — 품목별 최신 처방(week_id) · 매출(month_id) 조회
+ * localStorage 대신 Supabase 실데이터 기준으로 업로드 날짜를 반환한다.
+ * @param {{ id: string, dbId: string }[]} drugs
+ * @returns {Promise<Record<string, { weekId: string|null, monthId: string|null }>>}
+ */
+export async function loadAdminUploadDates(drugs) {
+  const results = await Promise.all(
+    drugs.map(async ({ id, dbId }) => {
+      const drugId = dbId ?? id;
+      const [weeklyRes, salesRes] = await Promise.all([
+        supabase
+          .from('weekly_data')
+          .select('week_id')
+          .eq('drug_id', drugId)
+          .order('week_id', { ascending: false })
+          .limit(1),
+        supabase
+          .from('monthly_sales')
+          .select('month_id')
+          .eq('drug_id', drugId)
+          .order('month_id', { ascending: false })
+          .limit(1),
+      ]);
+      return [id, {
+        weekId:  weeklyRes.data?.[0]?.week_id  ?? null,
+        monthId: salesRes.data?.[0]?.month_id  ?? null,
+      }];
+    })
+  );
+  return Object.fromEntries(results);
+}
+
+/**
  * 품목별 최신 week_id 조회 — 사이드바 업데이트 뱃지 초기 로딩에 사용
  * localStorage 미등록 품목에 한해 호출됨
  * @param {{ id: string, dbId: string }[]} drugs

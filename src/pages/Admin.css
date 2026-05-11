@@ -260,23 +260,23 @@
 }
 
 .upload-table {
-  /* ag-table 베이스 상속 */
+  table-layout: fixed;
 }
 
 /* Head — .ag-table th(0-1-1)보다 높은 명시도(0-2-1)로 오버라이드 */
 .upload-table.ag-table th {
   background: var(--color-surface-2);
   padding: 11px var(--space-4);
-  text-align: left;
   color: var(--color-text-muted);
   white-space: nowrap;
 }
+
 
 .upload-th {
   /* 컬럼별 너비 지정용 — 스타일은 위 선택자에서 */
 }
 
-.upload-th--name   { }
+.upload-th--name   { width: 200px; }
 .upload-th--date   { width: 120px; white-space: nowrap; }
 .upload-th--tab    { width: 64px; text-align: center; }
 .upload-th--form   { width: 140px; }
@@ -357,6 +357,7 @@
 .upload-td--name {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 2px;
 }
 

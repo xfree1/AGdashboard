@@ -729,15 +729,11 @@ export async function detectAndParseMultiple(files) {
     if (!hasStandalone) throw new Error('애니코프 단독 데이터 파일을 찾을 수 없습니다. (애니코프 행이 있는 파일을 함께 올려주세요)');
 
     // 최신 주차 일치 확인
-    const latestMarket = anycof.rows
-      .filter(r => r.product && r.product !== '애니코프')
-      .map(r => r.week_id).sort().at(-1);
-    const latestStandalone = anycof.rows
-      .filter(r => r.product === '애니코프')
-      .map(r => r.week_id).sort().at(-1);
-    if (latestMarket !== latestStandalone) {
-      throw new Error(`애니코프 두 파일의 최신 주차가 다릅니다. (시장: ${latestMarket}, 단독: ${latestStandalone})`);
-    }
+    const marketWeeks     = new Set(anycof.rows.filter(r => r.product && r.product !== '애니코프').map(r => r.week_id));
+    const standaloneWeeks = new Set(anycof.rows.filter(r => r.product === '애니코프').map(r => r.week_id));
+    const commonWeeks     = new Set([...marketWeeks].filter(w => standaloneWeeks.has(w)));
+    if (commonWeeks.size === 0) throw new Error('애니코프 두 파일의 공통 주차가 없습니다. 기간을 확인해주세요.');
+    anycof.rows = anycof.rows.filter(r => commonWeeks.has(r.week_id));
   }
 
   return { type: [...types][0], results: Object.values(mergedMap), skipped };

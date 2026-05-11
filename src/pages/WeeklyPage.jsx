@@ -189,16 +189,18 @@ function buildSections(rawRows, sectionConfig, maxProducts, productFilter) {
       weekSet.add(row.week_id);
     });
 
-    // 누락 주차 감지 — 제품별 누락 주차 목록 수집
-    const allWeekIds = [...weekSet];
-    const gaps = []; // { product, manufacturer, weeks[] }
-    Object.entries(productMap).forEach(([, item]) => {
-      const missing = allWeekIds.filter(w => !(w in item.values));
-      if (missing.length > 0) {
-        gaps.push({ product: item.product, manufacturer: item.manufacturer, weeks: missing });
-      }
+    // 전체·Others 제외한 실제 제품들의 주차 교집합만 컬럼으로 사용
+    // → 한 제품이라도 데이터 없는 주차는 컬럼 자체를 제거해 누락 셀 방지
+    const nonSpecialKeys = Object.keys(productMap).filter(k => {
+      const item = productMap[k];
+      return item.product !== '전체' && item.product !== 'Others';
     });
-    const gapCount = gaps.reduce((s, g) => s + g.weeks.length, 0);
+    const allWeekIds = [...weekSet].sort();
+    const intersectWeeks = nonSpecialKeys.length > 0
+      ? allWeekIds.filter(w => nonSpecialKeys.every(key => w in productMap[key].values))
+      : allWeekIds;
+    const gapCount = 0;
+    const gaps = [];
     const orderMap = productFilter
       ? Object.fromEntries(productFilter.map((p, i) => [p, i]))
       : null;
@@ -235,7 +237,7 @@ function buildSections(rawRows, sectionConfig, maxProducts, productFilter) {
     } else {
       rows = sorted;
     }
-    return { ...cfg, weeks: [...weekSet].sort(), rows, gapCount, gaps };
+    return { ...cfg, weeks: intersectWeeks, rows, gapCount, gaps };
   });
 }
 
@@ -549,6 +551,16 @@ export default function WeeklyPage() {
         }
         console.debug(`[WeeklyPage] ${drugId}: 최종 rawRows=${rows.length}행`);
         setRawRows(rows);
+
+        // 실제 DB 데이터 기준으로 latest/seen 갱신 (타이밍 이슈 방어)
+        const maxWeek = [...allData, ...ppiData].map(r => r.week_id).filter(Boolean).sort().at(-1);
+        if (maxWeek) {
+          const current = localStorage.getItem(`ag_weekly_latest_${drugId}`);
+          if (!current || maxWeek > current) {
+            localStorage.setItem(`ag_weekly_latest_${drugId}`, maxWeek);
+          }
+          localStorage.setItem(`ag_weekly_seen_${drugId}`, maxWeek);
+        }
       })
       .catch((e) => {
         if (cancelled) return;
@@ -558,6 +570,13 @@ export default function WeeklyPage() {
 
     return () => { cancelled = true; };
   }, [drugId, drug, sectionConfig]);
+
+  // 이 약품 페이지를 방문했음을 기록 → 사이드바 NEW 배지 해제
+  useEffect(() => {
+    if (!drugId) return;
+    const latest = localStorage.getItem(`ag_weekly_latest_${drugId}`);
+    if (latest) localStorage.setItem(`ag_weekly_seen_${drugId}`, latest);
+  }, [drugId]);
 
   const productFilter = WEEKLY_PRODUCT_FILTER[drugId] ?? null;
   const maxProducts   = productFilter ? null : 5;

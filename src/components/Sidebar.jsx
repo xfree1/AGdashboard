@@ -2,8 +2,15 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { DRUGS } from '../config/drugs';
 import { loadLatestWeekPerDrug } from '../utils/supabaseLoader';
-import { fmtWeekDate } from '../utils/weekUtils';
+import { weekIdToSat } from '../utils/weekUtils';
 import './Sidebar.css';
+
+function weekRangeLabel(weekId) {
+  const sat = weekIdToSat(weekId);
+  if (!sat) return weekId;
+  const fmt = d => `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+  return fmt(sat);
+}
 
 /* ── Icons ── */
 function IconGrid() {
@@ -77,24 +84,38 @@ export default function Sidebar() {
     return map;
   });
 
-  // 브라우저 뒤로가기/앞으로가기 시 패널 동기화
+  const [seenWeeks, setSeenWeeks] = useState(() => {
+    const map = {};
+    for (const drug of DRUGS) {
+      const v = localStorage.getItem(`ag_weekly_seen_${drug.id}`);
+      if (v) map[drug.id] = v;
+    }
+    return map;
+  });
+
+  // 브라우저 뒤로가기/앞으로가기 시 패널 동기화 + seenWeeks 재동기화 (WeeklyPage 방문 후 배지 해제)
   useEffect(() => {
     setOpenPanel(panelFromPath);
+    const map = {};
+    for (const drug of DRUGS) {
+      const v = localStorage.getItem(`ag_weekly_seen_${drug.id}`);
+      if (v) map[drug.id] = v;
+    }
+    setSeenWeeks(map);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  // localStorage 미등록 품목은 Supabase에서 1회 조회 후 캐시
+  // 마운트 시 전체 약품 최신 주차 Supabase 조회 — 더 최신 값이 있으면 업데이트
   useEffect(() => {
-    const missing = DRUGS.filter(
-      d => !localStorage.getItem(`ag_weekly_latest_${d.id}`)
-    );
-    if (missing.length === 0) return;
-    loadLatestWeekPerDrug(missing).then(result => {
+    loadLatestWeekPerDrug(DRUGS).then(result => {
       const updates = {};
       for (const [id, week] of Object.entries(result)) {
         if (!week) continue;
-        localStorage.setItem(`ag_weekly_latest_${id}`, week);
-        updates[id] = week;
+        const current = localStorage.getItem(`ag_weekly_latest_${id}`);
+        if (!current || week > current) {
+          localStorage.setItem(`ag_weekly_latest_${id}`, week);
+          updates[id] = week;
+        }
       }
       if (Object.keys(updates).length > 0) {
         setLatestWeeks(prev => ({ ...prev, ...updates }));
@@ -201,9 +222,15 @@ export default function Sidebar() {
                   onClick={() => navigate('/weekly/' + drug.id)}
                 >
                   {drug.name}
-                  {latestWeeks[drug.id] && (
-                    <span className="sb__panel-update-badge">{fmtWeekDate(latestWeeks[drug.id])}</span>
-                  )}
+                  {latestWeeks[drug.id] && (() => {
+                    const isNew = pathname !== '/weekly/' + drug.id &&
+                                  latestWeeks[drug.id] !== seenWeeks[drug.id];
+                    return isNew
+                      ? <span className="sb__panel-new-badge">NEW</span>
+                      : <span className="sb__panel-week-label">
+                          {weekRangeLabel(latestWeeks[drug.id])}
+                        </span>;
+                  })()}
                 </div>
               ))}
             </div>
