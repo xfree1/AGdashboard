@@ -12,7 +12,7 @@
  */
 
 export const WEEKLY_SECTION_CONFIG = {
-  levo_tension: [
+  levotension: [
     {
       valueType: 'ms',
       metric: 'qty',
@@ -29,7 +29,7 @@ export const WEEKLY_SECTION_CONFIG = {
     },
   ],
 
-  levo_saltan: [
+  levosartan: [
     {
       valueType: 'ms',
       metric: 'qty',
@@ -46,7 +46,7 @@ export const WEEKLY_SECTION_CONFIG = {
     },
   ],
 
-  pevarojet: [
+  pevarozet: [
     {
       valueType: 'ms',
       metric: 'qty',
@@ -63,7 +63,7 @@ export const WEEKLY_SECTION_CONFIG = {
     },
   ],
 
-  sinectura: [
+  synatura: [
     {
       valueType: 'ms',
       metric: 'rx_cnt',
@@ -99,7 +99,7 @@ export const WEEKLY_SECTION_CONFIG = {
     },
   ],
 
-  anycof: [
+  anycough: [
     {
       valueType: 'ms',
       metric: 'qty',
@@ -116,7 +116,7 @@ export const WEEKLY_SECTION_CONFIG = {
     },
   ],
 
-  polax: [
+  forlax: [
     {
       valueType: 'ms',
       metric: 'qty',
@@ -133,7 +133,7 @@ export const WEEKLY_SECTION_CONFIG = {
     },
   ],
 
-  retopra: [
+  letopra: [
     {
       valueType: 'ms',
       metric: 'qty',
@@ -170,7 +170,7 @@ export const WEEKLY_SECTION_CONFIG = {
  * 파서가 성분 컬럼의 "prazan" 여부로 자동 분리해서 저장
  */
 export const PCAB_NPCAB_DB_ID = {
-  retopra: 'retopra_npcab',
+  letopra: 'letopra_npcab',
 };
 
 /**
@@ -178,7 +178,7 @@ export const PCAB_NPCAB_DB_ID = {
  * ex) '놀텍 플러스' → '놀텍' 으로 묶어서 집계
  */
 export const WEEKLY_PRODUCT_ALIAS = {
-  pevarojet: {
+  pevarozet: {
     'JW중외제약': '리바로젯',
     '안국약품':   '페바로젯',
     '대원제약':   '타바로젯',
@@ -196,13 +196,13 @@ export const WEEKLY_PRODUCT_ALIAS = {
 export const WEEKLY_CUTOFF_WEEK_ID = '26.15주';
 
 export const WEEKLY_PRODUCT_FILTER = {
-  levo_tension: ['비아트리스 노바스크', '레보텐션', '아모디핀', '로디엔', '애니디핀 에스'],
-  levo_saltan: ['엑스포지', '엑스원', '레보살탄', '엑스페라', '발디핀'],
-  sinectura: ['시네츄라', '코대원 에스', '코대원 포르테', '코푸'],
+  levotension: ['비아트리스 노바스크', '레보텐션', '아모디핀', '로디엔', '애니디핀 에스'],
+  levosartan: ['엑스포지', '엑스원', '레보살탄', '엑스페라', '발디핀'],
+  synatura: ['시네츄라', '코대원 에스', '코대원 포르테', '코푸'],
   rupafin: ['페니라민', '동아 투리온', '씨잘', '루파핀'],
-  anycof:  ['코푸', '코대원', '애니코프', '레보투스', '칼로민'],
-  pevarojet: ['리바로젯', '페바로젯', '타바로젯', '엘제로젯', '피제트정', '스타젯'],
-  polax: ['마그밀', '듀락칸', '실콘', '아기오', '폴락스', '둘코락스'],
-  retopra: ['케이캡', '펙수클루', '자큐보', '에소메졸', '에스코텐', '레토프라'],
-  retopra_npcab: ['에소메졸', '에스코텐', '놀텍', '라비에트', '라베미니'],
+  anycough: ['코푸', '코대원', '코대원 플러스', '애니코프', '레보투스', '칼로민'],
+  pevarozet: ['리바로젯', '페바로젯', '타바로젯', '엘제로젯', '피제트정', '스타젯'],
+  forlax: ['마그밀', '듀락칸', '실콘', '아기오', '폴락스', '둘코락스'],
+  letopra: ['케이캡', '펙수클루', '자큐보', '에소메졸', '에스코텐', '판토록', '레토프라'],
+  letopra_npcab: ['에소메졸', '에스코텐', '놀텍', '라비에트', '라베미니', '판토록', '레토프라'],
 };

@@ -1,7 +1,7 @@
 export const DRUGS = [
   {
-    id: 'pevarojet',
-    dbId: 'eze_pita',
+    id: 'pevarozet',
+    dbId: 'pevarozet',
     name: '페바로젯',
     ingredient: ['ezetimibe', 'pitavastatin'],
     excludeIngredient: ['fenofibrate', 'fenofibric'],
@@ -13,8 +13,8 @@ export const DRUGS = [
     // 데이터 확인법: 로우데이터 성분 컬럼에서 ezetimibe+pitavastatin AND 조건 필터, fenofibrate/fenofibric 제외, 판매사 기준 집계
   },
   {
-    id: 'levo_tension',
-    dbId: 'levo_tension',
+    id: 'levotension',
+    dbId: 'levotension',
     name: '레보텐션',
     ingredient: ['amlodipine'],
     excludeIngredient: ['valsartan', 'olmesartan', 'losartan', 'telmisartan', 'irbesartan', 'candesartan', 'fimasartan'],
@@ -26,8 +26,8 @@ export const DRUGS = [
     // 데이터 확인법: 백데이터 탭 [레보텐션backdata], 제조사 컬럼 기준 집계, 처방량(qty) 사용
   },
   {
-    id: 'levo_saltan',
-    dbId: 'levo_saltan',
+    id: 'levosartan',
+    dbId: 'levosartan',
     name: '레보살탄',
     ingredient: ['amlodipine', 'valsartan'],
     excludeIngredient: [],
@@ -39,8 +39,8 @@ export const DRUGS = [
     // 데이터 확인법: 백데이터 탭 [레보살탄backdata], 제조사 컬럼 기준 집계, 처방량(qty) 사용
   },
   {
-    id: 'sinectura',
-    dbId: 'sinectura',
+    id: 'synatura',
+    dbId: 'synatura',
     name: '시네츄라',
     ingredient: ['levodropropizine'],
     excludeIngredient: [],
@@ -66,8 +66,8 @@ export const DRUGS = [
     showDonut: true,
   },
   {
-    id: 'anycof',
-    dbId: 'anycof',
+    id: 'anycough',
+    dbId: 'anycough',
     name: '애니코프',
     ingredient: ['levodropropizine'],
     excludeIngredient: [],
@@ -80,8 +80,8 @@ export const DRUGS = [
     showDonut: true,
   },
   {
-    id: 'retopra',
-    dbId: 'retopra',
+    id: 'letopra',
+    dbId: 'letopra',
     name: '레토프라',
     ingredient: ['s-pantoprazole'],
     excludeIngredient: [],
@@ -93,8 +93,8 @@ export const DRUGS = [
     // 데이터 확인법: 미확인 — 확인 후 업데이트 필요
   },
   {
-    id: 'polax',
-    dbId: 'polax',
+    id: 'forlax',
+    dbId: 'forlax',
     name: '폴락스',
     ingredient: ['macrogol'],
     excludeIngredient: [],

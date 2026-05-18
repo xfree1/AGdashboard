@@ -21,8 +21,8 @@ async function fetchAllRows(dbId) {
       .order('week_id', { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
 
-    if (dbId === 'retopra') {
-      query = query.or('drug_id.eq.retopra_pcab,drug_id.eq.retopra_npcab');
+    if (dbId === 'letopra') {
+      query = query.or('drug_id.eq.letopra_pcab,drug_id.eq.letopra_npcab');
     } else {
       query = query.eq('drug_id', dbId);
     }

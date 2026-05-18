@@ -12,6 +12,7 @@ import UbistCompanyAll      from './components/UbistCompanyAll';
 import UbistCompanyClinic   from './components/UbistCompanyClinic';
 import UbistCompanyHospital from './components/UbistCompanyHospital';
 import UbistAngukAll        from './components/UbistAngukAll';
+import CsdPage              from './pages/CsdPage';
 import RouteProgress        from './components/RouteProgress';
 import './styles/variables.css';
 import './styles/table.css';
@@ -44,6 +45,9 @@ function App() {
         <Route path="/ubist/company-clinic" element={<MainLayout tableView><UbistCompanyClinic /></MainLayout>} />
         <Route path="/ubist/company-hosp"   element={<MainLayout tableView><UbistCompanyHospital /></MainLayout>} />
         <Route path="/ubist/anguk-all"      element={<MainLayout tableView><UbistAngukAll /></MainLayout>} />
+
+        {/* CSD */}
+        <Route path="/csd" element={<CsdPage />} />
 
         {/* 어드민 */}
         <Route path="/admin"                      element={<Admin />} />

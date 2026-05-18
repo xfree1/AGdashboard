@@ -13,7 +13,21 @@
       "Bash(npm uninstall:*)",
       "Bash(python3 -c ':*)",
       "Bash(python -c ':*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(curl -s 'https://xwwczkjgzyenrrnvrxwl.supabase.co/rest/v1/weekly_data?drug_id=eq.anycof&week_id=eq.26.15주&select=product,vendor,week_id,qty_value,rx_value&order=qty_value.desc' -H 'apikey: sb_publishable_bjZzNFDAxiF79ds0CIOqwQ_a6t_OSsf' -H 'Authorization: Bearer sb_publishable_bjZzNFDAxiF79ds0CIOqwQ_a6t_OSsf')",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s -G https://xwwczkjgzyenrrnvrxwl.supabase.co/rest/v1/weekly_data --data-urlencode drug_id=eq.anycof --data-urlencode week_id=eq.26.15주 --data-urlencode select=product,vendor,week_id,qty_value --data-urlencode order=qty_value.desc -H 'apikey: sb_publishable_bjZzNFDAxiF79ds0CIOqwQ_a6t_OSsf' -H 'Authorization: Bearer sb_publishable_bjZzNFDAxiF79ds0CIOqwQ_a6t_OSsf')",
+      "Bash(node -e ' *)",
+      "Bash(Get-Item \"C:/Users/user/Desktop/새 폴더 \\(3\\)/새 폴더/새 폴더 \\(3\\)/26년 2월 CSD.xlsx\")",
+      "Bash(Select-Object Name, Length, LastWriteTime)",
+      "PowerShell($f = Get-Item \"C:/Users/user/Desktop/새 폴더 \\(3\\)/새 폴더/새 폴더 \\(3\\)/26년 2월 CSD.xlsx\"; Write-Output \"$\\($f.Name\\) | $\\([math]::Round\\($f.Length/1KB, 1\\)\\) KB | $\\($f.LastWriteTime\\)\")",
+      "PowerShell($f = Get-Item \"C:/Users/user/Desktop/새 폴더 \\(3\\)/새 폴더/새 폴더 \\(3\\)/csd_dashboard_2603_v3 \\(1\\).html\"; $lines = Get-Content $f; $line363 = $lines[362]; Write-Output \"Line 363 length: $\\($line363.Length\\) chars\"; $line364 = $lines[363]; Write-Output \"Line 364 length: $\\($line364.Length\\) chars\")",
+      "Bash(Get-ChildItem \"D:\\\\#최종\\\\#2026\\\\1Q\" -Recurse -Depth 2)",
+      "Bash(Select-Object FullName, LastWriteTime)",
+      "Bash(Sort-Object LastWriteTime)",
+      "Bash(Format-Table -AutoSize)",
+      "Read(//d/#����/#2026/**)",
+      "PowerShell(Get-ChildItem \"D:\\\\#최종\\\\#2026\\\\1Q\" | Where-Object {!$_.PSIsContainer} | Select-Object Name, LastWriteTime | Sort-Object LastWriteTime | Format-Table -AutoSize -Wrap)"
     ],
     "additionalDirectories": [
       "c:\\Users\\user\\Desktop\\ag-board\\src\\pages"

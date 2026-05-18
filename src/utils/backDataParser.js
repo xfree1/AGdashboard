@@ -33,15 +33,15 @@ function parseWeekLabel(raw) {
 
 /* 탭 이름 → drug_id 매핑 */
 const SHEET_TO_DRUG_ID = {
-  '레보텐션backdata':           'levo_tension',
-  '레보살탄backdata':           'levo_saltan',
-  '페바로젯backdata':           'eze_pita',
-  '시네츄라backdata':           'sinectura',
+  '레보텐션backdata':           'levotension',
+  '레보살탄backdata':           'levosartan',
+  '페바로젯backdata':           'pevarozet',
+  '시네츄라backdata':           'synatura',
   '루파핀backdata':             'rupafin',
-  '애니코프backdata':           'anycof',
-  '레토프라backdata_PCAB포함':  'retopra_pcab',
-  '레토프라backdata_PCAB불포함':'retopra_npcab',
-  '폴락스backdata':             'polax',
+  '애니코프backdata':           'anycough',
+  '레토프라backdata_PCAB포함':  'letopra_pcab',
+  '레토프라backdata_PCAB불포함':'letopra_npcab',
+  '폴락스backdata':             'forlax',
 };
 
 /* ── 공통 시트 파서 ────────────────────────────────────────── */
@@ -405,7 +405,7 @@ export async function parseBackDataFileForDrug(file, drugDbId) {
 
         wb.SheetNames.forEach(sheetName => {
           const sheetDrugId = SHEET_TO_DRUG_ID[sheetName];
-          // exact match 또는 접두사 match (retopra → retopra_pcab, retopra_npcab)
+          // exact match 또는 접두사 match (letopra → letopra_pcab, letopra_npcab)
           if (!sheetDrugId) return;
           if (sheetDrugId !== drugDbId && !sheetDrugId.startsWith(drugDbId + '_')) return;
 
@@ -521,7 +521,7 @@ function parseSalesRawFile(wb) {
 
 /* ── 레토프라 위클리 시장 파일 파서 ───────────────────────────────
    구조: row0=타입(처방량), row1=헤더(ATC·제품·브랜드·제조사·성분·주차...), row2+=데이터
-   브랜드를 집계 키로 사용, drug_id='retopra'로 저장
+   브랜드를 집계 키로 사용, drug_id='letopra'로 저장
    감지 조건: 브랜드·ATC·제조사 컬럼 모두 존재 AND 데이터에 '레토프라' 브랜드 포함
 ──────────────────────────────────────────────────────────────────── */
 function parseRetopraWeeklySheet(ws) {
@@ -579,14 +579,14 @@ function parseRetopraWeeklySheet(ws) {
     const isPcab  = (brandIng[brand] || '').toLowerCase().includes('prazan');
     for (const weekId of allWeeks) {
       const base = { product: brand, vendor, week_id: weekId, rx_value: 0, qty_value: weekData[`qty_${weekId}`] ?? 0 };
-      allRows.push({ ...base, drug_id: 'retopra' });
-      if (!isPcab) ppiRows.push({ ...base, drug_id: 'retopra_npcab' });
+      allRows.push({ ...base, drug_id: 'letopra' });
+      if (!isPcab) ppiRows.push({ ...base, drug_id: 'letopra_npcab' });
     }
   }
 
   return [
-    { drugId: 'retopra',       sheetName: '레토프라 (PPI·P-CAB 시장)', rows: allRows },
-    { drugId: 'retopra_npcab', sheetName: '레토프라 (PPI 시장)',        rows: ppiRows },
+    { drugId: 'letopra',       sheetName: '레토프라 (PPI·P-CAB 시장)', rows: allRows },
+    { drugId: 'letopra_npcab', sheetName: '레토프라 (PPI 시장)',        rows: ppiRows },
   ];
 }
 
@@ -697,19 +697,19 @@ export async function detectAndParseMultiple(files) {
     }
   }
 
-  // anycof 외 약품이 여러 파일에서 나오면 차단
+  // anycough 외 약품이 여러 파일에서 나오면 차단
   const nonAnycofMulti = Object.entries(drugFileCount)
-    .filter(([id, cnt]) => id !== 'anycof' && cnt > 1);
+    .filter(([id, cnt]) => id !== 'anycough' && cnt > 1);
   if (nonAnycofMulti.length > 0) {
     throw new Error('애니코프 외 품목은 파일을 하나씩 올려주세요.');
   }
 
-  // anycof가 없는데 여러 파일이면 차단
-  if (!drugFileCount['anycof']) {
+  // anycough가 없는데 여러 파일이면 차단
+  if (!drugFileCount['anycough']) {
     throw new Error('여러 파일 업로드는 애니코프 전용입니다. 다른 품목은 하나씩 올려주세요.');
   }
 
-  // anycof rows 병합
+  // anycough rows 병합
   const mergedMap = {};
   const skipped   = [];
   for (const parsed of allParsed) {
@@ -720,8 +720,8 @@ export async function detectAndParseMultiple(files) {
     skipped.push(...(parsed.skipped ?? []));
   }
 
-  // anycof 검증: 시장 데이터 + 단독 데이터 둘 다 있어야 함
-  const anycof = mergedMap['anycof'];
+  // anycough 검증: 시장 데이터 + 단독 데이터 둘 다 있어야 함
+  const anycof = mergedMap['anycough'];
   if (anycof) {
     const hasMarket     = anycof.rows.some(r => r.product && r.product !== '애니코프');
     const hasStandalone = anycof.rows.some(r => r.product === '애니코프');

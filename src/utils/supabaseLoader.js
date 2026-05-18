@@ -11,26 +11,26 @@ const DUMMY_WEEKS = [
 ];
 
 const DUMMY_VENDORS = {
-  levo_tension: [
+  levotension: [
     { name: '비아트리스', base: 0.268 },
     { name: '안국약품',   base: 0.101 },
     { name: '한미약품',   base: 0.097 },
     { name: '한림제약',   base: 0.056 },
     { name: '종근당',     base: 0.025 },
   ],
-  levo_saltan: [
+  levosartan: [
     { name: '안국약품',   base: 0.082 },
     { name: '노바티스',   base: 0.194 },
     { name: '다이이찌',   base: 0.113 },
     { name: '한미약품',   base: 0.065 },
   ],
-  pevarojet: [
+  pevarozet: [
     { name: '안국약품',   base: 0.058 },
     { name: '종근당',     base: 0.221 },
     { name: '한미약품',   base: 0.147 },
     { name: '대웅제약',   base: 0.089 },
   ],
-  sinectura: [
+  synatura: [
     { name: '안국약품',   base: 0.071 },
     { name: '한미약품',   base: 0.189 },
     { name: '동아제약',   base: 0.112 },
@@ -41,17 +41,17 @@ const DUMMY_VENDORS = {
     { name: '경동제약',   base: 0.098 },
     { name: '종근당',     base: 0.072 },
   ],
-  anycof: [
+  anycough: [
     { name: '안국약품',   base: 0.045 },
     { name: '대원제약',   base: 0.213 },
     { name: '한미약품',   base: 0.134 },
   ],
-  retopra: [
+  letopra: [
     { name: '안국약품',   base: 0.088 },
     { name: '한국얀센',   base: 0.201 },
     { name: '종근당',     base: 0.143 },
   ],
-  polax: [
+  forlax: [
     { name: '안국약품',   base: 0.004 },
     { name: '삼남제약',   base: 0.574 },
     { name: 'JW중외제약', base: 0.167 },
@@ -59,13 +59,13 @@ const DUMMY_VENDORS = {
 };
 
 const DUMMY_SCALE = {
-  levo_tension: 2_560_000, levo_saltan: 520_000, pevarojet: 480_000,
-  sinectura: 310_000,      rupafin: 290_000,      anycof: 180_000,
-  retopra: 420_000,        polax: 2_640_000,
+  levotension: 2_560_000, levosartan: 520_000, pevarozet: 480_000,
+  synatura: 310_000,      rupafin: 290_000,    anycough: 180_000,
+  letopra: 420_000,       forlax: 2_640_000,
 };
 
 export function buildDummyDrugData(drug) {
-  const vendors = DUMMY_VENDORS[drug.id] ?? DUMMY_VENDORS.levo_tension;
+  const vendors = DUMMY_VENDORS[drug.id] ?? DUMMY_VENDORS.levotension;
   const scale   = DUMMY_SCALE[drug.id]   ?? 1_000_000;
 
   const vendorsSorted = vendors.map((v, vi) => ({

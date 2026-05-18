@@ -1,0 +1,242 @@
+/* ── 전체 래퍼 ── */
+.csd-wrap {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+}
+
+/* ── 바디 ── */
+.csd-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-height: 100vh;
+}
+
+/* ── 회사 리스트 패널 ── */
+.csd-company-panel {
+  width: 180px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.csd-search-box {
+  margin: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.csd-company-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.csd-company-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.csd-company-item:hover {
+  background: var(--color-gray-blue-200);
+}
+
+.csd-company-item--active {
+  background: var(--color-highlight);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.csd-company-rank {
+  width: 18px;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.csd-company-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 메인 콘텐츠 ── */
+.csd-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  overflow-y: auto;
+}
+
+/* ── 헤더바 ── */
+.csd-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 56px;
+  padding: var(--space-3) 0;
+}
+
+.csd-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.csd-rank-badge {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  background: var(--color-accent-dim);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
+}
+
+.csd-rank-num {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.csd-rank-total {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.csd-selected-company {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.csd-topbar-period {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.csd-topbar-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.csd-filter-group {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.csd-filter-btn {
+  padding: 4px var(--space-3);
+  background: var(--color-surface);
+  border: none;
+  border-right: 1px solid var(--color-border);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.csd-filter-btn:last-child {
+  border-right: none;
+}
+
+.csd-filter-btn--active {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+/* ── 미드 그리드 (DrugDashboard 비율 동일) ── */
+.csd-mid-grid {
+  display: grid;
+  grid-template-columns: 1fr 440px;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.csd-mid-left {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.csd-combined-card {
+  flex: 1;
+}
+
+.csd-mid-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  --kpi-value-size: 1.5rem;
+  --kpi-label-size: 0.875rem;
+}
+
+.csd-mid-right .kpi-card {
+  padding: var(--space-6) var(--space-6);
+  min-height: 100px;
+}
+
+/* 진료과 카드가 KPI 아래 남은 공간 채움 */
+.csd-specialty-card {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── 차트 플레이스홀더 ── */
+.csd-chart-ph {
+  background: var(--color-gray-blue-200);
+  border-radius: var(--radius-sm);
+  flex: 1;
+}
+
+.csd-chart-ph--trend {
+  min-height: 220px;
+}
+
+.csd-chart-ph--specialty {
+  min-height: 220px;
+}
+
+/* ── 범례 ── */
+.csd-legend-item {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.csd-legend-item--sov {
+  color: #e67e22;
+}
+
+/* ── KPI 서브텍스트 ── */
+.csd-kpi-sub {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+.csd-kpi-sub--down {
+  color: var(--color-danger);
+}

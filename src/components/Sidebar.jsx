@@ -298,8 +298,13 @@ export default function Sidebar() {
               <span>CSD</span>
               <button className="sb__panel-close" onClick={() => setOpenPanel(null)} aria-label="닫기">✕</button>
             </div>
-            <div className="sb__panel-body sb__panel-body--empty">
-              <span>준비 중</span>
+            <div className="sb__panel-body">
+              <div
+                className={`sb__panel-subitem${pathname === '/csd' ? ' active' : ''}`}
+                onClick={() => navigate('/csd')}
+              >
+                MR Call 분석
+              </div>
             </div>
           </>
         )}

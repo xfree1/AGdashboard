@@ -29,8 +29,8 @@ function findDrug(drugId) {
 function makeTabLabel(drugId) {
   const drug = findDrug(drugId);
   if (!drug) return drugId;
-  if (drugId === 'retopra_pcab')  return `${drug.name} PCAB포함`;
-  if (drugId === 'retopra_npcab') return `${drug.name} PCAB불포함`;
+  if (drugId === 'letopra_pcab')  return `${drug.name} PCAB포함`;
+  if (drugId === 'letopra_npcab') return `${drug.name} PCAB불포함`;
   const metricLabel = drug.metric === 'rx' ? '처방건수' : '처방량';
   return `${drug.name} ${metricLabel}`;
 }

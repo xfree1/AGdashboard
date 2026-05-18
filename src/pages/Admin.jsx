@@ -12,7 +12,7 @@ import './DataPreview.css';
 const TABS = ['처방', '매출'];
 
 /* 검수 완료된 품목만 업로드 허용 */
-const WEEKLY_ALLOWED = new Set(['levo_tension', 'levo_saltan', 'sinectura', 'rupafin', 'anycof', 'eze_pita', 'polax', 'retopra', 'retopra_npcab']);
+const WEEKLY_ALLOWED = new Set(['levotension', 'levosartan', 'synatura', 'rupafin', 'anycough', 'pevarozet', 'forlax', 'letopra', 'letopra_npcab']);
 
 function getPeriodStart() {
   const now = new Date();
@@ -113,7 +113,7 @@ function DrugTable({ drugs, uploadDates }) {
 /* 애니코프 부분 업로드 여부 확인 */
 function detectAnycofPartial(parsed) {
   if (parsed.type !== 'prescription') return null;
-  const anycof = parsed.results?.find(r => r.drugId === 'anycof');
+  const anycof = parsed.results?.find(r => r.drugId === 'anycough');
   if (!anycof) return null;
   const hasMarket     = anycof.rows.some(r => r.product && r.product !== '애니코프');
   const hasStandalone = anycof.rows.some(r => r.product === '애니코프');
@@ -124,8 +124,8 @@ function detectAnycofPartial(parsed) {
 
 /* 애니코프 두 파일 병합 + 검증 */
 function mergeAnycof(firstParsed, secondParsed) {
-  const firstRows  = firstParsed.results.find(r => r.drugId === 'anycof')?.rows ?? [];
-  const secondRows = secondParsed.results.find(r => r.drugId === 'anycof')?.rows ?? [];
+  const firstRows  = firstParsed.results.find(r => r.drugId === 'anycough')?.rows ?? [];
+  const secondRows = secondParsed.results.find(r => r.drugId === 'anycough')?.rows ?? [];
 
   if (secondRows.length === 0) throw new Error('두 번째 파일에서 애니코프 데이터를 찾을 수 없습니다.');
 
@@ -146,9 +146,9 @@ function mergeAnycof(firstParsed, secondParsed) {
   return {
     type: firstParsed.type,
     results: [
-      { drugId: 'anycof', rows: trimmed },
-      ...firstParsed.results.filter(r => r.drugId !== 'anycof'),
-      ...secondParsed.results.filter(r => r.drugId !== 'anycof'),
+      { drugId: 'anycough', rows: trimmed },
+      ...firstParsed.results.filter(r => r.drugId !== 'anycough'),
+      ...secondParsed.results.filter(r => r.drugId !== 'anycough'),
     ],
     skipped: [...(firstParsed.skipped ?? []), ...(secondParsed.skipped ?? [])],
   };
