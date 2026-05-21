@@ -63,6 +63,23 @@ export const WEEKLY_SECTION_CONFIG = {
     },
   ],
 
+  levosartan_plus: [
+    {
+      valueType: 'ms',
+      metric: 'qty',
+      scope: 'default',
+      title: '(S)Amlodipine+Valsartan+Chlortalidone 주요경쟁품 M/S',
+      note: '*처방량 대비 M/S기준',
+    },
+    {
+      valueType: 'raw',
+      metric: 'qty',
+      scope: 'default',
+      title: '(S)Amlodipine+Valsartan+Chlortalidone 주요경쟁품 처방량',
+      note: '*처방량 기준',
+    },
+  ],
+
   pevarozet: [
     {
       valueType: 'ms',
@@ -216,6 +233,7 @@ export const WEEKLY_PRODUCT_FILTER = {
   pevarozet_low: ['바로에젯', '피타큐젯', '피에젯타', '스타젯 정 1/10mg', '페바로젯 저용량'],  // 출시 후 '페바로젯 저용량' 데이터 자동 반영
   levotension: ['비아트리스 노바스크', '레보텐션', '아모디핀', '로디엔', '애니디핀 에스'],
   levosartan: ['엑스포지', '엑스원', '레보살탄', '엑스페라', '발디핀'],
+  levosartan_plus: ['발디핀 플러스', '엑스원 플러스', '바로셋', '레보살탄플러스'],
   synatura: ['시네츄라', '코대원 에스', '코대원 포르테', '코푸'],
   rupafin: ['페니라민', '동아 투리온', '씨잘', '루파핀'],
   anycough: ['코푸', '코대원', '코대원 플러스', '애니코프', '레보투스', '칼로민'],

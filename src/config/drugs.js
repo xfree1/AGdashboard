@@ -14,6 +14,20 @@ export const DRUGS = [
     prelaunch: true,  // 출시 전 — 이 줄만 삭제하면 실데이터로 전환
   },
   {
+    id: 'levosartan_plus',
+    dbId: 'levosartan_plus',
+    name: '레보살탄플러스',
+    ingredient: ['amlodipine', 'valsartan', 'chlortalidone'],
+    excludeIngredient: [],
+    marketProduct: '발디핀 플러스',
+    myVendor: '안국약품',
+    metric: 'qty',
+    topN: 5,
+    showGR: true,
+    showDonut: true,
+    prelaunch: true,  // 출시 전 — 이 줄만 삭제하면 실데이터로 전환
+  },
+  {
     id: 'pevarozet',
     dbId: 'pevarozet',
     name: '페바로젯',
@@ -44,7 +58,7 @@ export const DRUGS = [
     dbId: 'levosartan',
     name: '레보살탄',
     ingredient: ['amlodipine', 'valsartan'],
-    excludeIngredient: [],
+    excludeIngredient: ['chlortalidone'],
     myVendor: '안국약품',
     metric: 'qty',
     topN: 5,

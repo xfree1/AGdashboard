@@ -12,7 +12,7 @@ import './DataPreview.css';
 const TABS = ['처방', '매출'];
 
 /* 검수 완료된 품목만 업로드 허용 */
-const WEEKLY_ALLOWED = new Set(['levotension', 'levosartan', 'synatura', 'rupafin', 'anycough', 'pevarozet', 'pevarozet_low', 'forlax', 'letopra', 'letopra_npcab']);
+const WEEKLY_ALLOWED = new Set(['levotension', 'levosartan', 'levosartan_plus', 'synatura', 'rupafin', 'anycough', 'pevarozet', 'pevarozet_low', 'forlax', 'letopra', 'letopra_npcab']);
 
 function getPeriodStart() {
   const now = new Date();
