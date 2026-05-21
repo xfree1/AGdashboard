@@ -144,20 +144,20 @@ export default function Sidebar() {
             <IconGrid />
           </div>
 
-          {/* 8대품목 Weekly */}
+          {/* 안국약품 Weekly */}
           <div
             className={`sb__rail-item${isWeeklyActive || openPanel === 'weekly' ? ' active' : ''}`}
             onClick={() => toggle('weekly')}
-            title="8대품목 Weekly"
+            title="안국약품 Weekly"
           >
             <IconWeekly />
           </div>
 
-          {/* 8대품목 Monthly */}
+          {/* 안국약품 Monthly */}
           <div
             className={`sb__rail-item${openPanel === '8dae' ? ' active' : ''}`}
             onClick={() => toggle('8dae')}
-            title="8대품목 Monthly"
+            title="안국약품 Monthly"
           >
             <IconBox />
           </div>
@@ -207,11 +207,11 @@ export default function Sidebar() {
           </>
         )}
 
-        {/* 8대품목 Weekly 패널 */}
+        {/* 안국약품 Weekly 패널 */}
         {openPanel === 'weekly' && (
           <>
             <div className="sb__panel-header">
-              <span>8대품목 Weekly</span>
+              <span>안국약품 Weekly</span>
               <button className="sb__panel-close" onClick={() => setOpenPanel(null)} aria-label="닫기">✕</button>
             </div>
             <div className="sb__panel-body">
@@ -237,11 +237,11 @@ export default function Sidebar() {
           </>
         )}
 
-        {/* 8대품목 Monthly 패널 */}
+        {/* 안국약품 Monthly 패널 */}
         {openPanel === '8dae' && (
           <>
             <div className="sb__panel-header">
-              <span>8대품목 Monthly</span>
+              <span>안국약품 Monthly</span>
               <button className="sb__panel-close" onClick={() => setOpenPanel(null)} aria-label="닫기">✕</button>
             </div>
             <div className="sb__panel-body">

@@ -12,7 +12,7 @@ import './DataPreview.css';
 const TABS = ['처방', '매출'];
 
 /* 검수 완료된 품목만 업로드 허용 */
-const WEEKLY_ALLOWED = new Set(['levotension', 'levosartan', 'synatura', 'rupafin', 'anycough', 'pevarozet', 'forlax', 'letopra', 'letopra_npcab']);
+const WEEKLY_ALLOWED = new Set(['levotension', 'levosartan', 'synatura', 'rupafin', 'anycough', 'pevarozet', 'pevarozet_low', 'forlax', 'letopra', 'letopra_npcab']);
 
 function getPeriodStart() {
   const now = new Date();
@@ -309,7 +309,7 @@ export default function Admin() {
     <AdminLayout heading={heading}>
       <div className="admin-toolbar">
         <div className="admin-toolbar-left">
-          <span className="admin-toolbar-label">8대품목</span>
+          <span className="admin-toolbar-label">안국약품</span>
         </div>
         <div className="admin-toolbar-btns">
           <input

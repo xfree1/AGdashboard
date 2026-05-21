@@ -29,7 +29,7 @@ function App() {
         {/* 8대품목 */}
         <Route path="/drug/:drugId"   element={<DrugPage />} />
 
-        {/* 8대품목 위클리 */}
+        {/* 안국약품 Weekly */}
         <Route path="/weekly/:drugId" element={<WeeklyPage />} />
 
         {/* 대시보드 */}

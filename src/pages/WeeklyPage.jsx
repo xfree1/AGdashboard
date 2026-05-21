@@ -542,9 +542,27 @@ export default function WeeklyPage() {
       .then(([allData, ppiData]) => {
         if (cancelled) return;
         console.debug(`[WeeklyPage] ${drugId}: pcabIn=${allData.length}행, pcabOut=${ppiData.length}행 수신`);
+
+        // prelaunch: 미출시 제품의 경우 DB에 데이터가 없으므로 0값 행 주입
+        // 출시 후 drugs.js에서 prelaunch: true 줄만 삭제하면 실데이터로 자동 전환
+        let inData = allData;
+        if (drug.prelaunch && allData.length > 0) {
+          const hasMyVendor = allData.some(r => r.vendor === drug.myVendor);
+          if (!hasMyVendor) {
+            const weekIds = [...new Set(allData.map(r => r.week_id))];
+            inData = [
+              ...allData,
+              ...weekIds.map(weekId => ({
+                drug_id: drug.dbId, product: drug.name, vendor: drug.myVendor,
+                week_id: weekId, rx_value: 0, qty_value: 0,
+              })),
+            ];
+          }
+        }
+
         const rows = [];
-        if (pcabInCfg.length > 0 && allData.length > 0) {
-          rows.push(...buildRowsFromWeeklyData(allData, drug, pcabInCfg, filter, alias));
+        if (pcabInCfg.length > 0 && inData.length > 0) {
+          rows.push(...buildRowsFromWeeklyData(inData, drug, pcabInCfg, filter, alias));
         }
         if (pcabOutCfg.length > 0 && ppiData.length > 0) {
           rows.push(...buildRowsFromWeeklyData(ppiData, drug, pcabOutCfg, npcabFilter, npcabAlias));
@@ -553,7 +571,7 @@ export default function WeeklyPage() {
         setRawRows(rows);
 
         // 실제 DB 데이터 기준으로 latest/seen 갱신 (타이밍 이슈 방어)
-        const maxWeek = [...allData, ...ppiData].map(r => r.week_id).filter(Boolean).sort().at(-1);
+        const maxWeek = [...allData, ...ppiData].map(r => r.week_id).filter(Boolean).sort().at(-1);  // allData 원본 기준
         if (maxWeek) {
           const current = localStorage.getItem(`ag_weekly_latest_${drugId}`);
           if (!current || maxWeek > current) {
@@ -723,7 +741,7 @@ export default function WeeklyPage() {
         <div className="wt-header">
           <div className="wt-header-left">
             <h1 className="wt-title">{drug.name} Weekly</h1>
-            <span className="wt-subtitle">종합병원 8대품목 주간 현황 (UBIST)</span>
+            <span className="wt-subtitle">안국약품 종합병원 주간 현황 (UBIST)</span>
           </div>
         </div>
 

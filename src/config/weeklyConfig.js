@@ -12,6 +12,23 @@
  */
 
 export const WEEKLY_SECTION_CONFIG = {
+  pevarozet_low: [
+    {
+      valueType: 'ms',
+      metric: 'qty',
+      scope: 'default',
+      title: 'Pitavastatin(저용량)+Ezetimibe 주요경쟁품 M/S',
+      note: '*처방량 대비 M/S기준',
+    },
+    {
+      valueType: 'raw',
+      metric: 'qty',
+      scope: 'default',
+      title: 'Pitavastatin(저용량)+Ezetimibe 주요경쟁품 처방량',
+      note: '*처방량 기준',
+    },
+  ],
+
   levotension: [
     {
       valueType: 'ms',
@@ -196,6 +213,7 @@ export const WEEKLY_PRODUCT_ALIAS = {
 export const WEEKLY_CUTOFF_WEEK_ID = '26.15주';
 
 export const WEEKLY_PRODUCT_FILTER = {
+  pevarozet_low: ['바로에젯', '피타큐젯', '피에젯타', '스타젯 정 1/10mg', '페바로젯 저용량'],  // 출시 후 '페바로젯 저용량' 데이터 자동 반영
   levotension: ['비아트리스 노바스크', '레보텐션', '아모디핀', '로디엔', '애니디핀 에스'],
   levosartan: ['엑스포지', '엑스원', '레보살탄', '엑스페라', '발디핀'],
   synatura: ['시네츄라', '코대원 에스', '코대원 포르테', '코푸'],
