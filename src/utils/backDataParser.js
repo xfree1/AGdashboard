@@ -292,7 +292,13 @@ function parseBrandMarketSheet(ws, drug) {
 ──────────────────────────────────────────────────────────────── */
 function matchProductName(cellVal, name) {
   const p = String(cellVal || '').trim();
-  return p === name || p.startsWith(name + ' ');
+  if (p === name) return true;
+  if (p.startsWith(name + ' ')) {
+    // 다른 약품의 정식 명칭과 완전히 일치하면 제외 (예: '페바로젯 저용량' ≠ '페바로젯')
+    if (DRUGS.some(d => d.name === p)) return false;
+    return true;
+  }
+  return false;
 }
 
 function parseMarketSheet(ws, drug) {
