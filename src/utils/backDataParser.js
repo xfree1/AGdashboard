@@ -329,7 +329,13 @@ function parseMarketSheet(ws, drug) {
   const hasMarketProduct = drug.marketProduct
     ? dataRows.some(r => matchProductName(r[productIdx], drug.marketProduct))
     : false;
-  if (!hasMyProduct && !hasMarketProduct) return null;
+  // requireMarketProduct=true 약품은 name+marketProduct 둘 다 있어야 감지
+  // (예: 페바로젯 저용량 — 페바로젯 파일에 '페바로젯 저용량' 행이 있어도 '바로에젯' 없으면 무시)
+  if (drug.requireMarketProduct) {
+    if (!hasMyProduct || !hasMarketProduct) return null;
+  } else {
+    if (!hasMyProduct && !hasMarketProduct) return null;
+  }
 
   const rxCols  = [];
   const qtyCols = [];

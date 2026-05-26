@@ -6,6 +6,7 @@ export const DRUGS = [
     ingredient: ['ezetimibe', 'pitavastatin'],
     excludeIngredient: ['fenofibrate', 'fenofibric'],
     marketProduct: '바로에젯',
+    requireMarketProduct: true,  // name + marketProduct 둘 다 있어야 감지 (페바로젯 파일과 오감지 방지)
     myVendor: '안국약품',
     metric: 'qty',
     topN: 5,
