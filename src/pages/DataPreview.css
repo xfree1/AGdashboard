@@ -1,3 +1,65 @@
+/* ── 신규 제품 감지 배너 ────────────────────────────── */
+
+.preview-new-products {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  background: var(--color-warn-cell-bg);
+  border: 1px solid var(--color-warn-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-warn-dark);
+}
+
+.preview-new-products__icon {
+  flex-shrink: 0;
+  font-size: var(--text-base);
+  color: var(--color-warn);
+  margin-top: 1px;
+}
+
+.preview-new-products__label {
+  flex-shrink: 0;
+  font-weight: 600;
+  padding-top: 2px;
+}
+
+.preview-new-products__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+
+.preview-new-products__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.preview-new-products__item strong {
+  font-weight: 600;
+}
+
+.preview-new-products__week {
+  color: var(--color-warn-mid);
+  font-size: var(--text-xs);
+}
+
+.preview-new-products__hint {
+  flex-shrink: 0;
+  align-self: center;
+  color: var(--color-warn-mid);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
 /* ── Heading (breadcrumb + title 묶음) ───────────── */
 
 .preview-heading {

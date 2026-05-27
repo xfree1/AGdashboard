@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DRUGS } from '../config/drugs';
 import { supabase } from '../lib/supabase';
-import { fmtWeekLabel } from '../utils/weekUtils';
+import { fmtWeekLabel, weekIdToSat } from '../utils/weekUtils';
+import { WEEKLY_PRODUCT_FILTER } from '../config/weeklyConfig';
 import { loadMonthlySales } from '../utils/supabaseLoader';
 import { useUnderlineSlide } from '../hooks/useUnderlineSlide';
 import AdminLayout from '../components/AdminLayout';
@@ -17,7 +18,7 @@ async function fetchAllRows(dbId) {
   while (true) {
     let query = supabase
       .from('weekly_data')
-      .select('drug_id, vendor, week_id, rx_value, qty_value')
+      .select('drug_id, product, vendor, week_id, rx_value, qty_value')
       .order('week_id', { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
 
@@ -50,6 +51,7 @@ export default function DataPreview() {
   const [weeks, setWeeks] = useState([]);
   const [vendorRows, setVendorRows] = useState([]);
   const [visibleCount, setVisibleCount] = useState(15);
+  const [newProducts, setNewProducts] = useState([]);
   const [salesRows, setSalesRows] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
   const [salesError, setSalesError] = useState('');
@@ -136,6 +138,31 @@ export default function DataPreview() {
         });
 
         const allWeeks = [...weekSet].sort().reverse();
+
+        // 신규 제품 감지 — WEEKLY_PRODUCT_FILTER에 없는 product가 최신 주차 기준 4주 이내 첫 등장하면 배너 표시
+        const filter = WEEKLY_PRODUCT_FILTER[drug.id];
+        if (filter) {
+          const filterSet = new Set(filter);
+          const productFirstWeek = {};
+          raw.forEach(row => {
+            const prod = (row.product || '').trim();
+            if (!prod || filterSet.has(prod)) return;
+            if (!productFirstWeek[prod] || row.week_id < productFirstWeek[prod]) {
+              productFirstWeek[prod] = row.week_id;
+            }
+          });
+          const latestWeek = allWeeks[0];
+          const latDate = weekIdToSat(latestWeek);
+          const detected = Object.entries(productFirstWeek)
+            .filter(([, firstWeek]) => {
+              const firstDate = weekIdToSat(firstWeek);
+              if (!latDate || !firstDate) return false;
+              const diffWeeks = Math.round((latDate - firstDate) / (7 * 24 * 60 * 60 * 1000));
+              return diffWeeks <= 4;
+            })
+            .map(([product, firstWeek]) => ({ product, firstWeek }));
+          setNewProducts(detected);
+        }
 
         const rows = Object.entries(map)
           .map(([vendor, data]) => {
@@ -284,6 +311,22 @@ export default function DataPreview() {
 
       {activeTab === 'prescription' && !loading && !error && weeks.length === 0 && (
         <div className="preview-empty">업로드된 데이터가 없습니다.</div>
+      )}
+
+      {activeTab === 'prescription' && !loading && !error && newProducts.length > 0 && (
+        <div className="preview-new-products">
+          <span className="preview-new-products__icon">⚠</span>
+          <span className="preview-new-products__label">신규 제품 감지</span>
+          <ul className="preview-new-products__list">
+            {newProducts.map(({ product, firstWeek }) => (
+              <li key={product} className="preview-new-products__item">
+                <strong>{product}</strong>
+                <span className="preview-new-products__week">{firstWeek} 첫 등장</span>
+              </li>
+            ))}
+          </ul>
+          <span className="preview-new-products__hint">WEEKLY_PRODUCT_FILTER 추가 여부를 확인하세요</span>
+        </div>
       )}
 
       {activeTab === 'prescription' && !loading && !error && weeks.length > 0 && (

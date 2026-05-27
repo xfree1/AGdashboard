@@ -34,32 +34,8 @@ function buildRowsFromWeeklyData(rawData, drug, sectionConfig, productFilter, pr
     weekTotals[weekId].rx  += row.rx_value  ?? 0;
   }
 
-  // 디버그: 로드된 rawData → grouped 요약
-  const allPvKeys = Object.keys(grouped);
-  const weekCount = Object.keys(weekTotals).length;
-  console.debug(`[buildRows] ${drug.id}: rawData=${rawData.length}행, product-vendor 조합=${allPvKeys.length}개, 주차=${weekCount}개`);
-
   // 표시할 제품 목록 (필터 없으면 전체)
   const filterSet = productFilter ? new Set(productFilter) : null;
-
-  if (filterSet) {
-    const passed = allPvKeys.filter(k => {
-      const si = k.indexOf('||');
-      const p  = k.slice(0, si);
-      const v  = k.slice(si + 2);
-      return filterSet.has(p || v);
-    });
-    const dropped = allPvKeys.filter(k => {
-      const si = k.indexOf('||');
-      const p  = k.slice(0, si);
-      const v  = k.slice(si + 2);
-      return !filterSet.has(p || v);
-    });
-    console.debug(`[buildRows] ${drug.id}: 필터 통과=${passed.length}개, 제외=${dropped.length}개`);
-    if (dropped.length > 0 && dropped.length <= 10) {
-      console.debug(`[buildRows] 제외된 키(샘플):`, dropped.slice(0, 10));
-    }
-  }
 
   const rows = [];
 
@@ -199,8 +175,6 @@ function buildSections(rawRows, sectionConfig, maxProducts, productFilter) {
     const intersectWeeks = nonSpecialKeys.length > 0
       ? allWeekIds.filter(w => nonSpecialKeys.every(key => w in productMap[key].values))
       : allWeekIds;
-    const gapCount = 0;
-    const gaps = [];
     const orderMap = productFilter
       ? Object.fromEntries(productFilter.map((p, i) => [p, i]))
       : null;
@@ -237,7 +211,7 @@ function buildSections(rawRows, sectionConfig, maxProducts, productFilter) {
     } else {
       rows = sorted;
     }
-    return { ...cfg, weeks: intersectWeeks, rows, gapCount, gaps };
+    return { ...cfg, weeks: intersectWeeks, rows };
   });
 }
 
@@ -512,7 +486,6 @@ export default function WeeklyPage() {
 
   const [rawRows,        setRawRows]        = useState(null);
   const [expandedMonths, setExpandedMonths] = useState(new Set());
-  const [openGapSection,  setOpenGapSection]  = useState(null); // 누락 상세 패널 열린 섹션 index
 
   const sectionWrapRefs = useRef({});
 
@@ -532,7 +505,7 @@ export default function WeeklyPage() {
     const pcabInCfg   = sectionConfig.filter(s => s.scope !== 'pcab_out');
 
     const loadIn  = pcabInCfg.length > 0
-      ? loadWeeklyRaw(drug?.dbId ?? drugId)
+      ? loadWeeklyRaw(drug.dbId ?? drugId)
       : Promise.resolve([]);
     const loadOut = pcabOutCfg.length > 0 && npcabDbId
       ? loadWeeklyRaw(npcabDbId)
@@ -541,7 +514,6 @@ export default function WeeklyPage() {
     Promise.all([loadIn, loadOut])
       .then(([allData, ppiData]) => {
         if (cancelled) return;
-        console.debug(`[WeeklyPage] ${drugId}: pcabIn=${allData.length}행, pcabOut=${ppiData.length}행 수신`);
 
         // prelaunch: 미출시 제품의 경우 DB에 데이터가 없으므로 0값 행 주입
         // 출시 후 drugs.js에서 prelaunch: true 줄만 삭제하면 실데이터로 자동 전환
@@ -567,7 +539,6 @@ export default function WeeklyPage() {
         if (pcabOutCfg.length > 0 && ppiData.length > 0) {
           rows.push(...buildRowsFromWeeklyData(ppiData, drug, pcabOutCfg, npcabFilter, npcabAlias));
         }
-        console.debug(`[WeeklyPage] ${drugId}: 최종 rawRows=${rows.length}행`);
         setRawRows(rows);
 
         // 실제 DB 데이터 기준으로 latest/seen 갱신 (타이밍 이슈 방어)
@@ -588,13 +559,6 @@ export default function WeeklyPage() {
 
     return () => { cancelled = true; };
   }, [drugId, drug, sectionConfig]);
-
-  // 이 약품 페이지를 방문했음을 기록 → 사이드바 NEW 배지 해제
-  useEffect(() => {
-    if (!drugId) return;
-    const latest = localStorage.getItem(`ag_weekly_latest_${drugId}`);
-    if (latest) localStorage.setItem(`ag_weekly_seen_${drugId}`, latest);
-  }, [drugId]);
 
   const productFilter = WEEKLY_PRODUCT_FILTER[drugId] ?? null;
   const maxProducts   = productFilter ? null : 5;
@@ -753,38 +717,8 @@ export default function WeeklyPage() {
                 <span className="wt-section-title">
                   {section.title}
                   <span className="wt-section-note">{section.note}</span>
-                  {section.gapCount > 0 && (
-                    <button
-                      className={`wt-section-gap-badge${openGapSection === i ? ' wt-section-gap-badge--open' : ''}`}
-                      onClick={() => setOpenGapSection(v => v === i ? null : i)}
-                    >
-                      ⚠ 누락 {section.gapCount}셀 {openGapSection === i ? '▴' : '▾'}
-                    </button>
-                  )}
                 </span>
               </div>
-              {section.gapCount > 0 && openGapSection === i && (
-                <div className="wt-gap-panel">
-                  <table className="wt-gap-table">
-                    <thead>
-                      <tr>
-                        <th>제품</th>
-                        <th>제조사</th>
-                        <th>누락 주차</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {section.gaps.map((g, gi) => (
-                        <tr key={gi}>
-                          <td>{g.product || '-'}</td>
-                          <td>{g.manufacturer || '-'}</td>
-                          <td>{g.weeks.map(weekLabel).join(', ')}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
               <SectionTable
                 section={section}
                 visibleMonths={visibleMonths}
