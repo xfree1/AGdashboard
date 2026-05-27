@@ -255,18 +255,9 @@ export default function UploadConfirm() {
         for (const { drugId, rows } of parsed.results) {
           if (!checkedDrugs.has(drugId)) continue; // 체크 해제된 품목 스킵
 
-          // (product, vendor, week_id) 조합 기준으로 없는 행만 추출
-          // — week_id만 보면 다른 제품이 있는 주차에서 누락 제품이 건너뛰어지는 버그 방지
-          const existingKeys = tabState[drugId]?.existingKeys ?? new Set();
-          const newRows = rows.filter(r => {
-            const key = `${r.product || ''}||${r.vendor || ''}||${r.week_id}`;
-            return !existingKeys.has(key);
-          });
-          if (newRows.length === 0) continue;
-
           // 파서 버그 방어: 동일 키 중복 row 합산 제거
           const dedupMap = {};
-          for (const { drug_id, product, vendor, week_id, rx_value, qty_value } of newRows) {
+          for (const { drug_id, product, vendor, week_id, rx_value, qty_value } of rows) {
             const key = `${drug_id}||${product}||${vendor}||${week_id}`;
             if (!dedupMap[key]) {
               dedupMap[key] = { drug_id, product, vendor, week_id, rx_value: 0, qty_value: 0 };
@@ -275,7 +266,21 @@ export default function UploadConfirm() {
             dedupMap[key].qty_value += qty_value ?? 0;
           }
           const dedupedRows = Object.values(dedupMap);
+          if (dedupedRows.length === 0) continue;
 
+          // 업로드 주차 범위의 기존 데이터 삭제 — 오염 데이터 덮어쓰기 보장
+          const weekIds = [...new Set(dedupedRows.map(r => r.week_id))];
+          for (let i = 0; i < weekIds.length; i += 100) {
+            const batch = weekIds.slice(i, i + 100);
+            const { error: delErr } = await supabase
+              .from('weekly_data')
+              .delete()
+              .eq('drug_id', drugId)
+              .in('week_id', batch);
+            if (delErr) throw new Error(delErr.message);
+          }
+
+          // 전체 행 INSERT
           for (let i = 0; i < dedupedRows.length; i += BATCH_SIZE) {
             const batch = dedupedRows.slice(i, i + BATCH_SIZE);
             const { error: err } = await supabase
