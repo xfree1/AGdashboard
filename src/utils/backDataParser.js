@@ -329,10 +329,10 @@ function parseMarketSheet(ws, drug) {
   const hasMarketProduct = drug.marketProduct
     ? dataRows.some(r => matchProductName(r[productIdx], drug.marketProduct))
     : false;
-  // requireMarketProduct=true 약품은 name+marketProduct 둘 다 있어야 감지
-  // (예: 페바로젯 저용량 — 페바로젯 파일에 '페바로젯 저용량' 행이 있어도 '바로에젯' 없으면 무시)
+  // requireMarketProduct=true 약품: marketProduct(경쟁품)만 있으면 감지
+  // 출시 전 약품은 파일에 자사 제품명이 없으므로 name 기반 감지를 하지 않음
   if (drug.requireMarketProduct) {
-    if (!hasMyProduct || !hasMarketProduct) return null;
+    if (!hasMarketProduct) return null;
   } else {
     if (!hasMyProduct && !hasMarketProduct) return null;
   }
@@ -666,8 +666,10 @@ export async function detectAndParse(file) {
                 if (idx >= 0) results.splice(idx, 1);
               }
               // 2차: 성분 기반 로우데이터 (시장 파일이 아닌 경우)
+              // requireMarketProduct 약품은 시장 파일에서만 감지 — 성분 기반 감지 제외
               if (results.length === 0) {
                 for (const drug of DRUGS) {
+                  if (drug.requireMarketProduct) continue;
                   const parsed = parseRawSheet(firstSheet, drug);
                   if (parsed && parsed.rows.length > 0) results.push(parsed);
                 }
