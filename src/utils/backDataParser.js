@@ -655,13 +655,15 @@ export async function detectAndParse(file) {
               }
             } else {
               // 1차: 제품명 기반 시장 파일 (경쟁사 포함 전체 데이터)
-              // 파일명에 '저용량' 포함 여부로 pevarozet ↔ pevarozet_low 라우팅
-              const isLowDose = file.name.includes('저용량');
               for (const drug of DRUGS) {
-                if (drug.id === 'pevarozet_low' && !isLowDose) continue;
-                if (drug.id === 'pevarozet'     &&  isLowDose) continue;
                 const parsed = parseMarketSheet(firstSheet, drug);
                 if (parsed && parsed.rows.length > 0) results.push(parsed);
+              }
+              // 저용량 시장 파일엔 '페바로젯' 경쟁품이 포함되어 pevarozet도 동시 감지됨
+              // pevarozet_low가 감지된 경우 pevarozet 제거 (저용량이 더 구체적인 조건)
+              if (results.some(r => r.drugId === 'pevarozet_low')) {
+                const idx = results.findIndex(r => r.drugId === 'pevarozet');
+                if (idx >= 0) results.splice(idx, 1);
               }
               // 2차: 성분 기반 로우데이터 (시장 파일이 아닌 경우)
               if (results.length === 0) {
