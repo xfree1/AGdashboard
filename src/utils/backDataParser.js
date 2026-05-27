@@ -655,7 +655,11 @@ export async function detectAndParse(file) {
               }
             } else {
               // 1차: 제품명 기반 시장 파일 (경쟁사 포함 전체 데이터)
+              // 파일명에 '저용량' 포함 여부로 pevarozet ↔ pevarozet_low 라우팅
+              const isLowDose = file.name.includes('저용량');
               for (const drug of DRUGS) {
+                if (drug.id === 'pevarozet_low' && !isLowDose) continue;
+                if (drug.id === 'pevarozet'     &&  isLowDose) continue;
                 const parsed = parseMarketSheet(firstSheet, drug);
                 if (parsed && parsed.rows.length > 0) results.push(parsed);
               }
