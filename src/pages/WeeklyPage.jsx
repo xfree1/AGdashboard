@@ -175,6 +175,24 @@ function buildSections(rawRows, sectionConfig, maxProducts, productFilter) {
     const intersectWeeks = nonSpecialKeys.length > 0
       ? allWeekIds.filter(w => nonSpecialKeys.every(key => w in productMap[key].values))
       : allWeekIds;
+
+    // 누락 경고: 교집합에서 제외된 주차 + 원인 제품 추출
+    const droppedWeeks = allWeekIds.filter(w => !intersectWeeks.includes(w));
+    let missingInfo = null;
+    if (droppedWeeks.length > 0 && nonSpecialKeys.length > 0) {
+      const missingProductSet = new Set();
+      for (const w of droppedWeeks) {
+        for (const k of nonSpecialKeys) {
+          if (!(w in productMap[k].values)) {
+            missingProductSet.add(productMap[k].product || k.split('||')[0]);
+          }
+        }
+      }
+      missingInfo = {
+        droppedCount:    droppedWeeks.length,
+        missingProducts: [...missingProductSet],
+      };
+    }
     const orderMap = productFilter
       ? Object.fromEntries(productFilter.map((p, i) => [p, i]))
       : null;
@@ -211,7 +229,7 @@ function buildSections(rawRows, sectionConfig, maxProducts, productFilter) {
     } else {
       rows = sorted;
     }
-    return { ...cfg, weeks: intersectWeeks, rows };
+    return { ...cfg, weeks: intersectWeeks, rows, missingInfo };
   });
 }
 
@@ -263,14 +281,32 @@ function calcWoWGrowth(row, weeks, isMs) {
   return (cur / prev - 1) * 100;
 }
 
-function calc4WAgoGrowth(row, weeks, isMs) {
-  if (weeks.length < 5) return null;
-  const cur  = row.values[weeks[weeks.length - 1]];
-  const prev = row.values[weeks[weeks.length - 5]];
-  if (cur == null || prev == null) return null;
-  if (isMs) return (cur - prev) * 100;
-  if (prev === 0) return null;
-  return (cur / prev - 1) * 100;
+function calcMoMGrowth(row, weeks, isMs) {
+  const monthMap = {};
+  for (const w of weeks) {
+    const ym = weekIdToYearMonth(w);
+    if (!ym) continue;
+    const key = `${ym.year}-${String(ym.month).padStart(2, '0')}`;
+    if (!monthMap[key]) monthMap[key] = [];
+    monthMap[key].push(w);
+  }
+  const monthKeys = Object.keys(monthMap).sort();
+  if (monthKeys.length < 2) return null;
+
+  const curWeeks  = monthMap[monthKeys[monthKeys.length - 1]];
+  const prevWeeks = monthMap[monthKeys[monthKeys.length - 2]];
+
+  const avg = ws => {
+    const vals = ws.map(w => row.values[w]).filter(v => v != null);
+    return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null;
+  };
+
+  const curAvg  = avg(curWeeks);
+  const prevAvg = avg(prevWeeks);
+  if (curAvg == null || prevAvg == null) return null;
+  if (isMs) return (curAvg - prevAvg) * 100;
+  if (prevAvg === 0) return null;
+  return (curAvg / prevAvg - 1) * 100;
 }
 
 /* ────────────────────────────────────────────────
@@ -382,7 +418,7 @@ const SectionTable = React.memo(function SectionTable({ section, visibleMonths, 
             <th className="wt-th wt-th--fixed wt-th--product">제품</th>
             <th className="wt-th wt-th--fixed wt-th--mfr">제조사</th>
             <th className="wt-th wt-th--stat wt-th--stat-sticky wt-stat-s1">전주대비</th>
-            <th className="wt-th wt-th--stat wt-th--stat-sticky wt-stat-s2 wt-stat-last">4주대비</th>
+            <th className="wt-th wt-th--stat wt-th--stat-sticky wt-stat-s2 wt-stat-last">전월대비</th>
 
             {visibleMonths.map(mo => {
               const isOpen      = expandedMonths.has(mo.key);
@@ -587,7 +623,7 @@ export default function WeeklyPage() {
         return {
           ...row,
           wowGrowth: (isMsSection && isTotal) ? null : calcWoWGrowth(row, section.weeks, isMsSection),
-          momGrowth: (isMsSection && isTotal) ? null : calc4WAgoGrowth(row, section.weeks, isMsSection),
+          momGrowth: (isMsSection && isTotal) ? null : calcMoMGrowth(row, section.weeks, isMsSection),
         };
       });
       return { ...section, rows, pairedRawRows };
@@ -710,6 +746,35 @@ export default function WeeklyPage() {
         </div>
 
         {(rawRows === null || (rawRows.length > 0 && rawRows[0].drug_id !== drugId)) && <WeeklySkeleton />}
+
+        {rawRows !== null && !(rawRows.length > 0 && rawRows[0].drug_id !== drugId) && (() => {
+          const missingWarnings = sections
+            .map((s, i) => s.missingInfo ? { idx: i, title: s.title, ...s.missingInfo } : null)
+            .filter(Boolean);
+          return missingWarnings.length > 0 ? (
+            <div className="wt-missing-warning">
+              <svg className="wt-missing-warning__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                <path d="M8 6v3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="8" cy="11.5" r="0.75" fill="currentColor"/>
+              </svg>
+              <div className="wt-missing-warning__body">
+                <strong className="wt-missing-warning__title">일부 주차 데이터 누락 — 표시에서 제외됨</strong>
+                <ul className="wt-missing-warning__list">
+                  {missingWarnings.map(w => (
+                    <li key={w.idx}>
+                      <span className="wt-missing-warning__section">{w.title}</span>
+                      {' — '}
+                      <span className="wt-missing-warning__products">{w.missingProducts.join(', ')}</span>
+                      {' 데이터 없음으로 '}
+                      <strong>{w.droppedCount}개 주차</strong> 미표시
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : null;
+        })()}
 
         {rawRows !== null && !(rawRows.length > 0 && rawRows[0].drug_id !== drugId) && sections.map((section, i) => (
             <div key={i} className="wt-section">

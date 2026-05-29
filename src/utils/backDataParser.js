@@ -39,7 +39,6 @@ const SHEET_TO_DRUG_ID = {
   '시네츄라backdata':           'synatura',
   '루파핀backdata':             'rupafin',
   '애니코프backdata':           'anycough',
-  '레토프라backdata_PCAB포함':  'letopra_pcab',
   '레토프라backdata_PCAB불포함':'letopra_npcab',
   '폴락스backdata':             'forlax',
 };

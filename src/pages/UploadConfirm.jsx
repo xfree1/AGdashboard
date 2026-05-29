@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DRUGS } from '../config/drugs';
 import { supabase } from '../lib/supabase';
-import { fmtWeekLabel } from '../utils/weekUtils';
+import { fmtWeekLabel, weekIdToSat } from '../utils/weekUtils';
 import AdminLayout from '../components/AdminLayout';
 import './UploadConfirm.css';
 
@@ -29,8 +29,7 @@ function findDrug(drugId) {
 function makeTabLabel(drugId) {
   const drug = findDrug(drugId);
   if (!drug) return drugId;
-  if (drugId === 'letopra_pcab')  return `${drug.name} PCAB포함`;
-  if (drugId === 'letopra_npcab') return `${drug.name} PCAB불포함`;
+  if (drugId === 'letopra_npcab') return `${drug.name} PCAB제외`;
   const metricLabel = drug.metric === 'rx' ? '처방건수' : '처방량';
   return `${drug.name} ${metricLabel}`;
 }
@@ -128,6 +127,50 @@ function analyze(parsedAgg, existingMap, existingWeeks, metric) {
   return { newWeeks, overlapWeeks, changes };
 }
 
+/**
+ * 주차 시퀀스 구멍 감지 — 파일 자체에 특정 기간(월 단위 등)이 통째로 빠진 경우
+ * 연속된 두 주차 사이가 14일 이상 벌어지면 gap으로 간주
+ */
+function checkWeekSequenceGaps(parsedAgg) {
+  const { weeks } = parsedAgg;
+  if (weeks.length < 2) return [];
+  const gaps = [];
+  for (let i = 1; i < weeks.length; i++) {
+    const prevSat = weekIdToSat(weeks[i - 1]);
+    const currSat = weekIdToSat(weeks[i]);
+    if (!prevSat || !currSat) continue;
+    const diffDays    = (currSat - prevSat) / 86_400_000;
+    const missingCnt  = Math.round(diffDays / 7) - 1;
+    if (missingCnt > 0) {
+      gaps.push({ from: weeks[i - 1], to: weeks[i], missingCount: missingCnt });
+    }
+  }
+  return gaps;
+}
+
+/**
+ * 파일 내 제품별 주차 커버리지 불일치 감지
+ * — 어떤 제품이 전체 주차 중 일부에만 데이터가 있으면 WeeklyPage 교집합 로직에서 해당 주가 통째로 사라짐
+ */
+function checkProductWeekGaps(parsedAgg) {
+  const { weeks, vendors, vendorMap, metaMap } = parsedAgg;
+  if (weeks.length < 2) return [];
+  const gaps = [];
+  for (const key of vendors) {
+    const missingWeeks = weeks.filter(w => !(w in (vendorMap[key] ?? {})));
+    if (missingWeeks.length > 0) {
+      const meta = metaMap[key] ?? {};
+      gaps.push({
+        key,
+        product:      meta.product || meta.vendor || key,
+        vendor:       meta.vendor  || key,
+        missingWeeks,
+      });
+    }
+  }
+  return gaps.sort((a, b) => b.missingWeeks.length - a.missingWeeks.length);
+}
+
 /** 시장 합계 기준 10% 이상 차이 주차 감지 (최신 1주 제외) */
 function checkAnomalies(parsedAgg, existingMap, existingWeeks, metric) {
   if (existingWeeks.size === 0) return [];
@@ -200,7 +243,7 @@ export default function UploadConfirm() {
     parsed.results.forEach(({ drugId, rows }) => {
       setTabState(prev => ({
         ...prev,
-        [drugId]: { loading: true, existingMap: {}, existingWeeks: new Set(), existingKeys: new Set(), error: '', anomalies: [] },
+        [drugId]: { loading: true, existingMap: {}, existingWeeks: new Set(), existingKeys: new Set(), error: '', anomalies: [], weekGaps: [], seqGaps: [] },
       }));
       const drug   = findDrug(drugId);
       const metric = drug?.metric ?? 'qty';
@@ -208,9 +251,11 @@ export default function UploadConfirm() {
         .then(({ existingMap, existingWeeks, existingKeys }) => {
           const parsedAgg = aggregate(rows);
           const anomalies = checkAnomalies(parsedAgg, existingMap, existingWeeks, metric);
+          const weekGaps  = checkProductWeekGaps(parsedAgg);
+          const seqGaps   = checkWeekSequenceGaps(parsedAgg);
           setTabState(prev => ({
             ...prev,
-            [drugId]: { loading: false, existingMap, existingWeeks, existingKeys, error: '', anomalies },
+            [drugId]: { loading: false, existingMap, existingWeeks, existingKeys, error: '', anomalies, weekGaps, seqGaps },
           }));
         })
         .catch(e => {
@@ -416,6 +461,8 @@ export default function UploadConfirm() {
     }
 
     const anomalies = state.anomalies ?? [];
+    const weekGaps  = state.weekGaps  ?? [];
+    const seqGaps   = state.seqGaps   ?? [];
 
     const drug     = findDrug(drugId);
     const metric   = drug?.metric ?? 'qty';
@@ -456,6 +503,50 @@ export default function UploadConfirm() {
 
     return (
       <>
+        {/* 주차 시퀀스 구멍 경고 — 파일 자체에 특정 기간이 통째로 없는 경우 */}
+        {seqGaps.length > 0 && (
+          <div className="uc-anomaly uc-anomaly--gap">
+            <svg className="uc-anomaly__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="M8 6v3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="8" cy="11.5" r="0.75" fill="currentColor"/>
+            </svg>
+            <div className="uc-anomaly__body">
+              <strong className="uc-anomaly__title">파일에 누락된 기간이 있습니다 — 저장하면 해당 기간 데이터가 삭제됩니다</strong>
+              <p className="uc-anomaly__desc">아래 구간의 주차가 파일에 없습니다. 올바른 파일인지 확인해주세요.</p>
+              <div className="uc-anomaly__list">
+                {seqGaps.map((g, i) => (
+                  <span key={i} className="uc-anomaly__item uc-anomaly__item--gap">
+                    {fmtWeekLabel(g.from)} → {fmtWeekLabel(g.to)} 사이 <strong>{g.missingCount}주 누락</strong>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 제품별 주차 누락 경고 — 저장하면 WeeklyPage에서 해당 주차가 통째로 사라짐 */}
+        {weekGaps.length > 0 && (
+          <div className="uc-anomaly uc-anomaly--gap">
+            <svg className="uc-anomaly__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="M8 6v3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="8" cy="11.5" r="0.75" fill="currentColor"/>
+            </svg>
+            <div className="uc-anomaly__body">
+              <strong className="uc-anomaly__title">제품별 주차 데이터 불일치 — 저장 시 해당 주차가 위클리 화면에서 사라집니다</strong>
+              <p className="uc-anomaly__desc">아래 제품이 일부 주차에서 빠져 있습니다. 파일에 데이터가 누락된 것인지 확인해주세요.</p>
+              <div className="uc-anomaly__list">
+                {weekGaps.map(g => (
+                  <span key={g.key} className="uc-anomaly__item uc-anomaly__item--gap">
+                    <strong>{g.product}</strong>{g.vendor !== g.product ? ` (${g.vendor})` : ''} — {g.missingWeeks.length}개 주차 없음: {g.missingWeeks.map(w => fmtWeekLabel(w)).join(', ')}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 이상 감지 블록 */}
         {anomalies.length > 0 && (
           <div className="uc-anomaly">
@@ -644,11 +735,14 @@ export default function UploadConfirm() {
       <div className="preview-tabbar">
         <div className="preview-tabs">
           {tabs.map((tab, idx) => {
-            const hasAnomaly = (tabState[tab.drugId]?.anomalies?.length ?? 0) > 0;
+            const hasAnomaly  = (tabState[tab.drugId]?.anomalies?.length ?? 0) > 0;
+            const hasWeekGaps = (tabState[tab.drugId]?.weekGaps?.length  ?? 0) > 0;
+            const hasSeqGaps  = (tabState[tab.drugId]?.seqGaps?.length   ?? 0) > 0;
+            const hasWarn     = hasAnomaly || hasWeekGaps || hasSeqGaps;
             return (
               <button
                 key={tab.drugId}
-                className={`preview-tab${idx === activeIdx ? ' preview-tab--active' : ''}${hasAnomaly ? ' preview-tab--anomaly' : ''}`}
+                className={`preview-tab${idx === activeIdx ? ' preview-tab--active' : ''}${hasWarn ? ' preview-tab--anomaly' : ''}`}
                 onClick={() => setActiveIdx(idx)}
               >
                 {!isSales && (
@@ -662,7 +756,7 @@ export default function UploadConfirm() {
                   />
                 )}
                 {tab.label}
-                {hasAnomaly && <span className="uc-tab-warn">⚠</span>}
+                {hasWarn && <span className="uc-tab-warn">⚠</span>}
               </button>
             );
           })}

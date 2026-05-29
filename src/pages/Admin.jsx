@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DRUGS } from '../config/drugs';
 import { detectAndParse } from '../utils/backDataParser';
-import { loadAdminUploadDates } from '../utils/supabaseLoader';
+import { loadAdminUploadDates, loadWeekIdsPerDrug } from '../utils/supabaseLoader';
 import { fmtWeekDate, weekIdToSat } from '../utils/weekUtils';
 import AdminLayout from '../components/AdminLayout';
 import './Admin.css';
@@ -10,6 +10,20 @@ import './DataPreview.css';
 
 
 const TABS = ['처방', '매출'];
+
+function detectGaps(weekIds) {
+  if (!weekIds || weekIds.length < 2) return [];
+  const gaps = [];
+  for (let i = 1; i < weekIds.length; i++) {
+    const prevSat = weekIdToSat(weekIds[i - 1]);
+    const currSat = weekIdToSat(weekIds[i]);
+    if (!prevSat || !currSat) continue;
+    const diffDays = (currSat - prevSat) / 86_400_000;
+    const missing  = Math.round(diffDays / 7) - 1;
+    if (missing > 0) gaps.push({ from: weekIds[i - 1], to: weekIds[i], missingCount: missing });
+  }
+  return gaps;
+}
 
 /* 검수 완료된 품목만 업로드 허용 */
 const WEEKLY_ALLOWED = new Set(['levotension', 'levosartan', 'levosartan_plus', 'synatura', 'rupafin', 'anycough', 'pevarozet', 'pevarozet_low', 'forlax', 'letopra', 'letopra_npcab']);
@@ -29,7 +43,7 @@ function formatMonthId(monthId) {
   return `${String(year).slice(2)}.${month}`;
 }
 
-function DrugRow({ drug, idx, dates }) {
+function DrugRow({ drug, idx, dates, weekIds }) {
   const navigate = useNavigate();
   const periodStart = getPeriodStart();
 
@@ -48,9 +62,21 @@ function DrugRow({ drug, idx, dates }) {
     displayDate = formatMonthId(dates.monthId);
   }
 
+  const gaps         = detectGaps(weekIds);
+  const totalMissing = gaps.reduce((s, g) => s + g.missingCount, 0);
+  const gapTitle     = gaps.map(g => `${fmtWeekDate(g.from)} → ${fmtWeekDate(g.to)}: ${g.missingCount}주 누락`).join('\n');
+
   return (
     <tr className={`upload-row${idx % 2 === 1 ? ' ag-tr--zebra' : ''}`}>
       <td className="upload-td upload-td--name">
+        {weekIds === null && (
+          <span className="upload-gap-badge upload-gap-badge--loading">…</span>
+        )}
+        {totalMissing > 0 && (
+          <span className="upload-gap-badge" title={gapTitle}>
+            ⚠ {totalMissing}주 누락
+          </span>
+        )}
         <span className="upload-drug-name">{drug.name}</span>
       </td>
       <td className="upload-td upload-td--date">
@@ -85,7 +111,7 @@ function DrugRow({ drug, idx, dates }) {
   );
 }
 
-function DrugTable({ drugs, uploadDates }) {
+function DrugTable({ drugs, uploadDates, weekIdData }) {
   return (
     <div className="upload-table-wrap">
       <table className="upload-table ag-table">
@@ -102,7 +128,13 @@ function DrugTable({ drugs, uploadDates }) {
         </thead>
         <tbody>
           {drugs.map((drug, idx) => (
-            <DrugRow key={drug.dbId} drug={drug} idx={idx} dates={uploadDates[drug.id] ?? null} />
+            <DrugRow
+              key={drug.dbId}
+              drug={drug}
+              idx={idx}
+              dates={uploadDates[drug.id] ?? null}
+              weekIds={weekIdData ? (weekIdData[drug.id] ?? []) : null}
+            />
           ))}
         </tbody>
       </table>
@@ -161,6 +193,7 @@ export default function Admin() {
   const secondRef    = React.useRef(null);
 
   const [uploadDates,   setUploadDates]   = useState({});
+  const [weekIdData,    setWeekIdData]    = useState(null);
   const [importing,     setImporting]     = useState(false);
   const [importErr,     setImportErr]     = useState('');
   const [dragging,      setDragging]      = useState(false);
@@ -168,6 +201,7 @@ export default function Admin() {
 
   useEffect(() => {
     loadAdminUploadDates(DRUGS).then(setUploadDates).catch(() => {});
+    loadWeekIdsPerDrug(DRUGS).then(setWeekIdData).catch(() => setWeekIdData({}));
   }, []);
   // pendingAnycof = { parsed, neededType: 'market'|'standalone', firstFileName }
 
@@ -363,7 +397,7 @@ export default function Admin() {
             </div>
           </div>
         )}
-        <DrugTable drugs={DRUGS} uploadDates={uploadDates} />
+        <DrugTable drugs={DRUGS} uploadDates={uploadDates} weekIdData={weekIdData} />
       </div>
 
       {/* 애니코프 두 번째 파일 요청 모달 */}

@@ -514,3 +514,20 @@
   border-radius: var(--radius-sm);
   padding: 2px var(--space-2);
 }
+
+/* 주차 누락 경고 — warning 색조 (주황) */
+.uc-anomaly--gap {
+  border-color: var(--color-warning-border, #f59e0b);
+  background:   var(--color-warning-bg,     #fffbeb);
+  color:        var(--color-warning-text,   #92400e);
+}
+.uc-anomaly--gap .uc-anomaly__icon {
+  color: var(--color-warning-icon, #d97706);
+}
+.uc-anomaly--gap .uc-anomaly__desc {
+  color: var(--color-warning-text, #92400e);
+}
+.uc-anomaly__item--gap {
+  background: var(--color-warning-badge-bg, #fef3c7);
+  color:      var(--color-warning-text,     #92400e);
+}

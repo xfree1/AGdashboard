@@ -121,6 +121,47 @@ export async function loadAdminUploadDates(drugs) {
 }
 
 /**
+ * 품목별 DB 주차 시퀀스 조회 — 어드민 데이터 상태 표시에 사용
+ * 각 품목의 모든 week_id를 가져와 { drugId: string[] } 형태로 반환
+ * @param {{ id: string, dbId: string }[]} drugs
+ * @returns {Promise<Record<string, string[]>>}  { drug.id → 정렬된 week_id[] }
+ */
+export async function loadWeekIdsPerDrug(drugs) {
+  const results = await Promise.all(
+    drugs.map(async ({ id, dbId }) => {
+      const drugId = dbId ?? id;
+      const PAGE   = 1000;
+
+      const { count } = await supabase
+        .from('weekly_data')
+        .select('week_id', { count: 'exact', head: true })
+        .eq('drug_id', drugId);
+
+      if (!count) return [id, []];
+
+      const pages = Math.ceil(count / PAGE);
+      const allResults = await Promise.all(
+        Array.from({ length: pages }, (_, i) =>
+          supabase
+            .from('weekly_data')
+            .select('week_id')
+            .eq('drug_id', drugId)
+            .order('week_id', { ascending: true })
+            .range(i * PAGE, (i + 1) * PAGE - 1)
+        )
+      );
+
+      const weekIds = [...new Set(
+        allResults.flatMap(({ data }) => (data ?? []).map(r => r.week_id))
+      )].sort();
+
+      return [id, weekIds];
+    })
+  );
+  return Object.fromEntries(results);
+}
+
+/**
  * 품목별 최신 week_id 조회 — 사이드바 업데이트 뱃지 초기 로딩에 사용
  * localStorage 미등록 품목에 한해 호출됨
  * @param {{ id: string, dbId: string }[]} drugs

@@ -7,8 +7,7 @@
  * metric:     'qty'    = 처방량
  *             'rx_cnt' = 처방건수
  * scope:      'default'  = 일반 시장
- *             'pcab_in'  = P-CAB 포함 (레토프라)
- *             'pcab_out' = P-CAB 불포함 (레토프라)
+ *             'pcab_out' = P-CAB 제외 (레토프라)
  */
 
 export const WEEKLY_SECTION_CONFIG = {
@@ -171,29 +170,15 @@ export const WEEKLY_SECTION_CONFIG = {
     {
       valueType: 'ms',
       metric: 'qty',
-      scope: 'pcab_in',
-      title: '프로톤 펌프 억제제 시장(P-CAB 포함) M/S',
-      note: '*P-CAB 포함 전체 시장 처방량 대비 M/S기준',
-    },
-    {
-      valueType: 'raw',
-      metric: 'qty',
-      scope: 'pcab_in',
-      title: '프로톤 펌프 억제제 시장(P-CAB 포함) 처방량',
-      note: '*처방량 기준',
-    },
-    {
-      valueType: 'ms',
-      metric: 'qty',
       scope: 'pcab_out',
-      title: '프로톤 펌프 억제제 시장(P-CAB 불포함) M/S',
+      title: '프로톤 펌프 억제제 시장(P-CAB 제외) M/S',
       note: '*P-CAB 제외 처방량 대비 M/S기준',
     },
     {
       valueType: 'raw',
       metric: 'qty',
       scope: 'pcab_out',
-      title: '프로톤 펌프 억제제 시장(P-CAB 불포함) 처방량',
+      title: '프로톤 펌프 억제제 시장(P-CAB 제외) 처방량',
       note: '*P-CAB 제외 처방량 기준',
     },
   ],
