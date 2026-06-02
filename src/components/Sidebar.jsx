@@ -219,7 +219,14 @@ export default function Sidebar() {
                 <div
                   key={drug.id}
                   className={`sb__panel-subitem${pathname === '/weekly/' + drug.id ? ' active' : ''}`}
-                  onClick={() => navigate('/weekly/' + drug.id)}
+                  onClick={() => {
+                    const week = latestWeeks[drug.id];
+                    if (week) {
+                      localStorage.setItem(`ag_weekly_seen_${drug.id}`, week);
+                      setSeenWeeks(prev => ({ ...prev, [drug.id]: week }));
+                    }
+                    navigate('/weekly/' + drug.id);
+                  }}
                 >
                   {drug.name}
                   {latestWeeks[drug.id] && (() => {
