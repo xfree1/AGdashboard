@@ -90,9 +90,9 @@
      stat-s2   = 290 + 96  = 386px  ← last
 ── */
 /* 고정 컬럼 — 항상 동일한 너비 */
-col.wt-col-product { width: 180px; }
-col.wt-col-mfr     { width: 110px; }
-col.wt-col-stat    { width: 96px;  }
+col.wt-col-product { width: var(--wt-col-product); }
+col.wt-col-mfr     { width: var(--wt-col-mfr); }
+col.wt-col-stat    { width: var(--wt-col-stat); }
 /* 월/주차 컬럼 — 고정 너비 → 테이블이 자연스럽게 가로로 넓어짐 */
 col.wt-col-week    { width: 120px; }
 col.wt-col-avg     { width: 110px; }
@@ -131,8 +131,8 @@ col.wt-col-avg     { width: 110px; }
   border-right: none;
   box-shadow: inset -1px 0 0 var(--color-border);
 }
-.wt-th--product { left: 0;     }
-.wt-th--mfr     { left: 180px; }
+.wt-th--product { left: 0; }
+.wt-th--mfr     { left: var(--wt-col-product); }
 
 /* 고정 비교 컬럼 (전주대비/전월대비) sticky */
 .wt-th--stat-sticky {
@@ -142,8 +142,8 @@ col.wt-col-avg     { width: 110px; }
   border-right: none;
   box-shadow: inset -1px 0 0 var(--color-border);
 }
-.wt-stat-s1 { left: 290px; }
-.wt-stat-s2 { left: 386px; }
+.wt-stat-s1 { left: calc(var(--wt-col-product) + var(--wt-col-mfr)); }
+.wt-stat-s2 { left: calc(var(--wt-col-product) + var(--wt-col-mfr) + var(--wt-col-stat)); }
 
 /* 비교 컬럼 오른쪽 구분선 */
 .wt-th.wt-stat-last {
@@ -233,8 +233,8 @@ col.wt-col-avg     { width: 110px; }
   border-right: none;
   box-shadow: inset -1px 0 0 var(--color-border);
 }
-.wt-td--product { left: 0;     font-weight: 600; }
-.wt-td--mfr     { left: 180px; font-weight: 600; }
+.wt-td--product { left: 0; font-weight: 600; }
+.wt-td--mfr     { left: var(--wt-col-product); font-weight: 600; }
 
 /* 비교 컬럼 sticky */
 .wt-td--stat-sticky {
@@ -361,10 +361,10 @@ col.wt-col-avg     { width: 110px; }
   display: flex;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-warning-border, #f59e0b);
+  border: 1px solid var(--color-warning-border);
   border-radius: var(--radius-md);
-  background: var(--color-warning-bg, #fffbeb);
-  color: var(--color-warning-text, #92400e);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
   font-size: var(--text-sm);
   font-family: var(--font-sans);
 }
@@ -372,7 +372,7 @@ col.wt-col-avg     { width: 110px; }
 .wt-missing-warning__icon {
   flex-shrink: 0;
   margin-top: 2px;
-  color: var(--color-warning-icon, #d97706);
+  color: var(--color-warning-icon);
 }
 
 .wt-missing-warning__body {
@@ -399,7 +399,7 @@ col.wt-col-avg     { width: 110px; }
 }
 
 .wt-missing-warning__products {
-  color: var(--color-danger, #dc2626);
+  color: var(--color-danger);
   font-weight: 500;
 }
 

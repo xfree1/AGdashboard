@@ -309,6 +309,12 @@
 .upload-row {
   transition: background var(--transition-fast);
 }
+.upload-row:nth-child(even) td {
+  background: var(--table-zebra-bg);
+}
+.upload-row:nth-child(even):hover td {
+  background: var(--table-hover-zebra-bg);
+}
 .upload-row:hover td {
   background: var(--table-hover-bg);
 }
@@ -373,9 +379,9 @@
   align-items: center;
   padding: 1px var(--space-2);
   border-radius: var(--radius-sm);
-  background: var(--color-warning-bg, #fffbeb);
-  color: var(--color-warning-text, #92400e);
-  border: 1px solid var(--color-warning-border, #f59e0b);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border: 1px solid var(--color-warning-border);
   font-size: var(--text-xs);
   font-weight: 600;
   white-space: nowrap;

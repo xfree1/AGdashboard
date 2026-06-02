@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DRUGS } from '../config/drugs';
 import { detectAndParse } from '../utils/backDataParser';
@@ -43,7 +43,7 @@ function formatMonthId(monthId) {
   return `${String(year).slice(2)}.${month}`;
 }
 
-function DrugRow({ drug, idx, dates, weekIds }) {
+function DrugRow({ drug, dates, weekIds }) {
   const navigate = useNavigate();
   const periodStart = getPeriodStart();
 
@@ -62,12 +62,12 @@ function DrugRow({ drug, idx, dates, weekIds }) {
     displayDate = formatMonthId(dates.monthId);
   }
 
-  const gaps         = detectGaps(weekIds);
-  const totalMissing = gaps.reduce((s, g) => s + g.missingCount, 0);
-  const gapTitle     = gaps.map(g => `${fmtWeekDate(g.from)} → ${fmtWeekDate(g.to)}: ${g.missingCount}주 누락`).join('\n');
+  const gaps         = useMemo(() => detectGaps(weekIds), [weekIds]);
+  const totalMissing = useMemo(() => gaps.reduce((s, g) => s + g.missingCount, 0), [gaps]);
+  const gapTitle     = useMemo(() => gaps.map(g => `${fmtWeekDate(g.from)} → ${fmtWeekDate(g.to)}: ${g.missingCount}주 누락`).join('\n'), [gaps]);
 
   return (
-    <tr className={`upload-row${idx % 2 === 1 ? ' ag-tr--zebra' : ''}`}>
+    <tr className="upload-row">
       <td className="upload-td upload-td--name">
         {weekIds === null && (
           <span className="upload-gap-badge upload-gap-badge--loading">…</span>
@@ -129,9 +129,8 @@ function DrugTable({ drugs, uploadDates, weekIdData }) {
         <tbody>
           {drugs.map((drug, idx) => (
             <DrugRow
-              key={drug.dbId}
+              key={drug.id}
               drug={drug}
-              idx={idx}
               dates={uploadDates[drug.id] ?? null}
               weekIds={weekIdData ? (weekIdData[drug.id] ?? []) : null}
             />

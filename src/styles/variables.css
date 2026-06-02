@@ -73,6 +73,13 @@
   --color-accent-mid:    rgba(40, 140, 250, 0.12);  /* 강조 중간 배경 (hover) */
   --color-accent-bright: rgba(40, 140, 250, 0.18);  /* 강조 밝은 배경 (new badge) */
 
+  /* Warning 시맨틱 (배너·배지·경고 UI) */
+  --color-warning-bg:       #fffbeb;
+  --color-warning-border:   #f59e0b;
+  --color-warning-text:     #92400e;
+  --color-warning-icon:     #d97706;
+  --color-warning-badge-bg: #fef3c7;
+
   /* Warn (amber) 파생 */
   --color-warn-dark:        #92400e;                   /* amber-900, 경고 진한 텍스트 */
   --color-warn-mid:         #b45309;                   /* amber-700, 로딩 스피너 */
@@ -139,6 +146,10 @@
   --space-12: 48px;
 
   /* --- Layout --- */
+  --wt-col-product: 180px;  /* WeeklyPage 고정 컬럼 너비 */
+  --wt-col-mfr:     110px;
+  --wt-col-stat:     96px;
+
   --sidebar-width:           240px;
   --sidebar-width-collapsed: 64px;
   --sidebar-panel-width:     246px;

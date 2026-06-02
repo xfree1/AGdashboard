@@ -517,17 +517,17 @@
 
 /* 주차 누락 경고 — warning 색조 (주황) */
 .uc-anomaly--gap {
-  border-color: var(--color-warning-border, #f59e0b);
-  background:   var(--color-warning-bg,     #fffbeb);
-  color:        var(--color-warning-text,   #92400e);
+  border-color: var(--color-warning-border);
+  background:   var(--color-warning-bg);
+  color:        var(--color-warning-text);
 }
 .uc-anomaly--gap .uc-anomaly__icon {
-  color: var(--color-warning-icon, #d97706);
+  color: var(--color-warning-icon);
 }
 .uc-anomaly--gap .uc-anomaly__desc {
-  color: var(--color-warning-text, #92400e);
+  color: var(--color-warning-text);
 }
 .uc-anomaly__item--gap {
-  background: var(--color-warning-badge-bg, #fef3c7);
-  color:      var(--color-warning-text,     #92400e);
+  background: var(--color-warning-badge-bg);
+  color:      var(--color-warning-text);
 }

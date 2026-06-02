@@ -735,6 +735,11 @@ export default function WeeklyPage() {
     );
   }
 
+  const isReady = rawRows !== null && !(rawRows.length > 0 && rawRows[0].drug_id !== drugId);
+  const missingWarnings = isReady
+    ? sections.map((s, i) => s.missingInfo ? { idx: i, title: s.title, ...s.missingInfo } : null).filter(Boolean)
+    : [];
+
   return (
     <MainLayout tableView>
       <div className="wt-page">
@@ -745,38 +750,33 @@ export default function WeeklyPage() {
           </div>
         </div>
 
-        {(rawRows === null || (rawRows.length > 0 && rawRows[0].drug_id !== drugId)) && <WeeklySkeleton />}
+        {!isReady && <WeeklySkeleton />}
 
-        {rawRows !== null && !(rawRows.length > 0 && rawRows[0].drug_id !== drugId) && (() => {
-          const missingWarnings = sections
-            .map((s, i) => s.missingInfo ? { idx: i, title: s.title, ...s.missingInfo } : null)
-            .filter(Boolean);
-          return missingWarnings.length > 0 ? (
-            <div className="wt-missing-warning">
-              <svg className="wt-missing-warning__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                <path d="M8 6v3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                <circle cx="8" cy="11.5" r="0.75" fill="currentColor"/>
-              </svg>
-              <div className="wt-missing-warning__body">
-                <strong className="wt-missing-warning__title">일부 주차 데이터 누락 — 표시에서 제외됨</strong>
-                <ul className="wt-missing-warning__list">
-                  {missingWarnings.map(w => (
-                    <li key={w.idx}>
-                      <span className="wt-missing-warning__section">{w.title}</span>
-                      {' — '}
-                      <span className="wt-missing-warning__products">{w.missingProducts.join(', ')}</span>
-                      {' 데이터 없음으로 '}
-                      <strong>{w.droppedCount}개 주차</strong> 미표시
-                    </li>
-                  ))}
-                </ul>
-              </div>
+        {isReady && missingWarnings.length > 0 && (
+          <div className="wt-missing-warning">
+            <svg className="wt-missing-warning__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="M8 6v3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="8" cy="11.5" r="0.75" fill="currentColor"/>
+            </svg>
+            <div className="wt-missing-warning__body">
+              <strong className="wt-missing-warning__title">일부 주차 데이터 누락 — 표시에서 제외됨</strong>
+              <ul className="wt-missing-warning__list">
+                {missingWarnings.map(w => (
+                  <li key={w.idx}>
+                    <span className="wt-missing-warning__section">{w.title}</span>
+                    {' — '}
+                    <span className="wt-missing-warning__products">{w.missingProducts.join(', ')}</span>
+                    {' 데이터 없음으로 '}
+                    <strong>{w.droppedCount}개 주차</strong> 미표시
+                  </li>
+                ))}
+              </ul>
             </div>
-          ) : null;
-        })()}
+          </div>
+        )}
 
-        {rawRows !== null && !(rawRows.length > 0 && rawRows[0].drug_id !== drugId) && sections.map((section, i) => (
+        {isReady && sections.map((section, i) => (
             <div key={i} className="wt-section">
               <div className="wt-section-header">
                 <span className="wt-section-title">
