@@ -50,7 +50,6 @@ async function fetchExisting(drugId) {
     if (error) throw new Error(error.message);
     if (!data || data.length === 0) break;
     allData = allData.concat(data);
-    if (data.length < PAGE) break;
     from += PAGE;
   }
 
@@ -512,12 +511,12 @@ export default function UploadConfirm() {
               <circle cx="8" cy="11.5" r="0.75" fill="currentColor"/>
             </svg>
             <div className="uc-anomaly__body">
-              <strong className="uc-anomaly__title">파일에 누락된 기간이 있습니다 — 저장하면 해당 기간 데이터가 삭제됩니다</strong>
-              <p className="uc-anomaly__desc">아래 구간의 주차가 파일에 없습니다. 올바른 파일인지 확인해주세요.</p>
+              <strong className="uc-anomaly__title">파일에 일부 구간이 없습니다 — DB 기존 데이터는 유지됩니다</strong>
+              <p className="uc-anomaly__desc">아래 기간의 주차가 파일에 포함되지 않았습니다. 의도한 범위인지 확인해주세요.</p>
               <div className="uc-anomaly__list">
                 {seqGaps.map((g, i) => (
                   <span key={i} className="uc-anomaly__item uc-anomaly__item--gap">
-                    {fmtWeekLabel(g.from)} → {fmtWeekLabel(g.to)} 사이 <strong>{g.missingCount}주 누락</strong>
+                    {fmtWeekLabel(g.from)} → {fmtWeekLabel(g.to)} 사이 {g.missingCount}주 없음
                   </span>
                 ))}
               </div>
@@ -534,8 +533,8 @@ export default function UploadConfirm() {
               <circle cx="8" cy="11.5" r="0.75" fill="currentColor"/>
             </svg>
             <div className="uc-anomaly__body">
-              <strong className="uc-anomaly__title">제품별 주차 데이터 불일치 — 저장 시 해당 주차가 위클리 화면에서 사라집니다</strong>
-              <p className="uc-anomaly__desc">아래 제품이 일부 주차에서 빠져 있습니다. 파일에 데이터가 누락된 것인지 확인해주세요.</p>
+              <strong className="uc-anomaly__title">일부 제품의 주차 데이터가 파일에 없습니다</strong>
+              <p className="uc-anomaly__desc">아래 제품이 특정 주차에 빠져 있어, 위클리 화면에서 해당 주차가 보이지 않을 수 있습니다.</p>
               <div className="uc-anomaly__list">
                 {weekGaps.map(g => (
                   <span key={g.key} className="uc-anomaly__item uc-anomaly__item--gap">
