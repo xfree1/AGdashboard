@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { DRUGS } from '../config/drugs';
 import { supabase } from '../lib/supabase';
 import { fmtWeekLabel, weekIdToSat } from '../utils/weekUtils';
+import { fetchAllRows } from '../utils/supabaseLoader';
 import AdminLayout from '../components/AdminLayout';
 import './UploadConfirm.css';
 
@@ -36,22 +37,15 @@ function makeTabLabel(drugId) {
 
 /** Supabase에서 해당 drugId의 기존 데이터 전체 조회 */
 async function fetchExisting(drugId) {
-  const PAGE = 1000;
-  let allData = [];
-  let from = 0;
-
-  while (true) {
-    const { data, error } = await supabase
+  const allData = await fetchAllRows(() =>
+    supabase
       .from('weekly_data')
       .select('product, vendor, week_id, rx_value, qty_value')
       .eq('drug_id', drugId)
-      .range(from, from + PAGE - 1);
-
-    if (error) throw new Error(error.message);
-    if (!data || data.length === 0) break;
-    allData = allData.concat(data);
-    from += PAGE;
-  }
+      .order('week_id',  { ascending: true })
+      .order('product',  { ascending: true, nullsFirst: false })
+      .order('vendor',   { ascending: true, nullsFirst: false })
+  );
 
   const existingMap   = {};  // `product||vendor` → week_id → { rx, qty }
   const existingWeeks = new Set();
@@ -127,10 +121,10 @@ function analyze(parsedAgg, existingMap, existingWeeks, metric) {
 }
 
 /**
- * 주차 시퀀스 구멍 감지 — 파일 자체에 특정 기간(월 단위 등)이 통째로 빠진 경우
- * 연속된 두 주차 사이가 14일 이상 벌어지면 gap으로 간주
+ * 주차 시퀀스 구멍 감지 — 파일+DB 둘 다 없는 구간만 에러로 보고
+ * DB에 이미 있는 주차는 커버된 것으로 간주
  */
-function checkWeekSequenceGaps(parsedAgg) {
+function checkWeekSequenceGaps(parsedAgg, existingWeeks) {
   const { weeks } = parsedAgg;
   if (weeks.length < 2) return [];
   const gaps = [];
@@ -138,10 +132,16 @@ function checkWeekSequenceGaps(parsedAgg) {
     const prevSat = weekIdToSat(weeks[i - 1]);
     const currSat = weekIdToSat(weeks[i]);
     if (!prevSat || !currSat) continue;
-    const diffDays    = (currSat - prevSat) / 86_400_000;
-    const missingCnt  = Math.round(diffDays / 7) - 1;
-    if (missingCnt > 0) {
-      gaps.push({ from: weeks[i - 1], to: weeks[i], missingCount: missingCnt });
+    const diffDays   = (currSat - prevSat) / 86_400_000;
+    const missingCnt = Math.round(diffDays / 7) - 1;
+    if (missingCnt <= 0) continue;
+    // DB에서 이 구간(from~to 사이)을 얼마나 커버하는지 확인
+    const dbCovered = [...existingWeeks].filter(
+      w => w > weeks[i - 1] && w < weeks[i]
+    ).length;
+    const reallyMissing = missingCnt - dbCovered;
+    if (reallyMissing > 0) {
+      gaps.push({ from: weeks[i - 1], to: weeks[i], missingCount: reallyMissing });
     }
   }
   return gaps;
@@ -251,7 +251,7 @@ export default function UploadConfirm() {
           const parsedAgg = aggregate(rows);
           const anomalies = checkAnomalies(parsedAgg, existingMap, existingWeeks, metric);
           const weekGaps  = checkProductWeekGaps(parsedAgg);
-          const seqGaps   = checkWeekSequenceGaps(parsedAgg);
+          const seqGaps   = checkWeekSequenceGaps(parsedAgg, existingWeeks);
           setTabState(prev => ({
             ...prev,
             [drugId]: { loading: false, existingMap, existingWeeks, existingKeys, error: '', anomalies, weekGaps, seqGaps },
@@ -502,7 +502,7 @@ export default function UploadConfirm() {
 
     return (
       <>
-        {/* 주차 시퀀스 구멍 경고 — 파일 자체에 특정 기간이 통째로 없는 경우 */}
+        {/* 주차 시퀀스 구멍 경고 — 파일+DB 모두 없는 진짜 빈 구간 */}
         {seqGaps.length > 0 && (
           <div className="uc-anomaly uc-anomaly--gap">
             <svg className="uc-anomaly__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -511,12 +511,12 @@ export default function UploadConfirm() {
               <circle cx="8" cy="11.5" r="0.75" fill="currentColor"/>
             </svg>
             <div className="uc-anomaly__body">
-              <strong className="uc-anomaly__title">파일에 일부 구간이 없습니다 — DB 기존 데이터는 유지됩니다</strong>
-              <p className="uc-anomaly__desc">아래 기간의 주차가 파일에 포함되지 않았습니다. 의도한 범위인지 확인해주세요.</p>
+              <strong className="uc-anomaly__title">DB에도 없는 주차 구간이 있습니다 — 저장 시 해당 기간 데이터 없음</strong>
+              <p className="uc-anomaly__desc">파일에도, DB에도 없는 주차입니다. 데이터 누락이 맞는지 확인해주세요.</p>
               <div className="uc-anomaly__list">
                 {seqGaps.map((g, i) => (
                   <span key={i} className="uc-anomaly__item uc-anomaly__item--gap">
-                    {fmtWeekLabel(g.from)} → {fmtWeekLabel(g.to)} 사이 {g.missingCount}주 없음
+                    {fmtWeekLabel(g.from)} → {fmtWeekLabel(g.to)} 사이 {g.missingCount}주 누락
                   </span>
                 ))}
               </div>
