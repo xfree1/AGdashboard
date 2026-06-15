@@ -1,6 +1,24 @@
 import { supabase } from '../lib/supabase';
 import { weekIdToSat, satToWeekId } from './weekUtils';
 
+/**
+ * Supabase 페이지네이션 공통 함수 — 1000개 서버 한도를 우회해 전체 rows 반환.
+ * makeQuery: () => SupabaseQueryBuilder  (range 없이 select/eq/order까지만 세팅)
+ */
+export async function fetchAllRows(makeQuery) {
+  const PAGE = 1000;
+  let all  = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await makeQuery().range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    if (!data?.length) break;
+    all.push(...data);
+    from += data.length;  // 서버가 PAGE보다 적게 반환해도 rows 누락 없음
+  }
+  return all;
+}
+
 /* ── 더미 데이터 (실 데이터 교체 전 틀 유지용) ─────────────────── */
 const DUMMY_WEEKS = [
   '24.40주','24.41주','24.42주','24.43주','24.44주',
@@ -130,31 +148,14 @@ export async function loadWeekIdsPerDrug(drugs) {
   const results = await Promise.all(
     drugs.map(async ({ id, dbId }) => {
       const drugId = dbId ?? id;
-      const PAGE   = 1000;
-
-      const { count } = await supabase
-        .from('weekly_data')
-        .select('week_id', { count: 'exact', head: true })
-        .eq('drug_id', drugId);
-
-      if (!count) return [id, []];
-
-      const pages = Math.ceil(count / PAGE);
-      const allResults = await Promise.all(
-        Array.from({ length: pages }, (_, i) =>
-          supabase
-            .from('weekly_data')
-            .select('week_id')
-            .eq('drug_id', drugId)
-            .order('week_id', { ascending: true })
-            .range(i * PAGE, (i + 1) * PAGE - 1)
-        )
+      const rows   = await fetchAllRows(() =>
+        supabase
+          .from('weekly_data')
+          .select('week_id')
+          .eq('drug_id', drugId)
+          .order('week_id', { ascending: true })
       );
-
-      const weekIds = [...new Set(
-        allResults.flatMap(({ data }) => (data ?? []).map(r => r.week_id))
-      )].sort();
-
+      const weekIds = [...new Set(rows.map(r => r.week_id))].sort();
       return [id, weekIds];
     })
   );
@@ -193,23 +194,16 @@ export async function loadWeeklyRaw(drugId) {
     .select('*', { count: 'exact', head: true })
     .eq('drug_id', drugId);
 
-  if (countErr) {
-    console.error(`[loadWeeklyRaw] ${drugId} count 쿼리 실패:`, countErr);
-    return [];
-  }
+  if (countErr) throw new Error(countErr.message);
   if (!count) return [];
 
   const pages = Math.ceil(count / PAGE);
-  console.debug(`[loadWeeklyRaw] ${drugId}: 총 ${count}행, ${pages}페이지 로드 시작`);
-
   const results = await Promise.all(
     Array.from({ length: pages }, (_, i) =>
       supabase
         .from('weekly_data')
         .select('product, vendor, week_id, rx_value, qty_value')
         .eq('drug_id', drugId)
-        // ★ 3-key 정렬: week_id만 쓰면 동일 week_id 내 순서가 쿼리마다 달라져
-        //   병렬 페이지 요청 시 경계 로우가 누락·중복될 수 있다.
         .order('week_id', { ascending: true })
         .order('product',  { ascending: true, nullsFirst: false })
         .order('vendor',   { ascending: true, nullsFirst: false })
@@ -217,18 +211,8 @@ export async function loadWeeklyRaw(drugId) {
     )
   );
 
-  const rows = results.flatMap(({ data, error }) => {
-    if (error) console.error(`[loadWeeklyRaw] ${drugId} 페이지 쿼리 실패:`, error);
-    return data ?? [];
-  });
-
-  if (rows.length !== count) {
-    console.warn(`[loadWeeklyRaw] ${drugId}: count=${count} 인데 실제 수신=${rows.length} — 페이지 누락 의심`);
-  } else {
-    console.debug(`[loadWeeklyRaw] ${drugId}: ${rows.length}행 정상 수신`);
-  }
-
-  return rows;
+  results.forEach(({ error }) => { if (error) throw new Error(error.message); });
+  return results.flatMap(({ data }) => data ?? []);
 }
 
 export async function loadMonthlySales(drugId) {
@@ -244,24 +228,13 @@ export async function loadMonthlySales(drugId) {
 export async function loadDrugData(drug) {
   if (!drug.dbId) throw new Error(`약 설정에 dbId가 없습니다: ${drug.name}`);
 
-  // Supabase 서버 max-rows=1000 제한 우회: 페이지네이션으로 전체 로드
-  const PAGE = 1000;
-  let allData = [];
-  let from = 0;
-  while (true) {
-    const { data, error } = await supabase
+  const data = await fetchAllRows(() =>
+    supabase
       .from('weekly_data')
       .select('vendor, week_id, rx_value, qty_value')
       .eq('drug_id', drug.dbId)
       .order('week_id', { ascending: true })
-      .range(from, from + PAGE - 1);
-
-    if (error || !data || data.length === 0) break;
-    allData = allData.concat(data);
-    if (data.length < PAGE) break;
-    from += PAGE;
-  }
-  const data = allData;
+  );
 
   if (data.length === 0) return buildDummyDrugData(drug);
 

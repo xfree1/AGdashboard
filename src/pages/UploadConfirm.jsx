@@ -170,22 +170,27 @@ function checkProductWeekGaps(parsedAgg) {
   return gaps.sort((a, b) => b.missingWeeks.length - a.missingWeeks.length);
 }
 
-/** 시장 합계 기준 10% 이상 차이 주차 감지 (최신 1주 제외) */
+/** 시장 합계 기준 10% 이상 차이 주차 감지 (최신 1주 제외)
+ *  비교 기준: DB에 이미 non-zero 값이 있는 벤더만 대상으로 삼음
+ *  → 신규 벤더가 소급 추가돼도 이상감지 오발 방지
+ */
 function checkAnomalies(parsedAgg, existingMap, existingWeeks, metric) {
   if (existingWeeks.size === 0) return [];
-  const { weeks, vendors, vendorMap } = parsedAgg;
+  const { weeks, vendorMap } = parsedAgg;
   const overlapWeeks = weeks.filter(w => existingWeeks.has(w));
   const checkWeeks   = overlapWeeks.slice(0, -1); // 최신 1주 제외
   if (checkWeeks.length === 0) return [];
 
   const anomalies = [];
   for (const weekId of checkWeeks) {
-    const newTotal = vendors.reduce(
-      (s, v) => s + (vendorMap[v]?.[weekId]?.[metric] ?? 0), 0
-    );
-    const existingTotal = Object.values(existingMap).reduce(
-      (s, weekMap) => s + (weekMap[weekId]?.[metric] ?? 0), 0
-    );
+    // DB에 non-zero 값이 있는 벤더만 비교 대상 — 신규 벤더 소급 추가는 이상 아님
+    let newTotal = 0, existingTotal = 0;
+    for (const [key, weekMap] of Object.entries(existingMap)) {
+      const oldVal = weekMap[weekId]?.[metric] ?? 0;
+      if (oldVal === 0) continue;
+      existingTotal += oldVal;
+      newTotal += vendorMap[key]?.[weekId]?.[metric] ?? 0;
+    }
     if (existingTotal === 0) continue;
     const diff = Math.abs(newTotal - existingTotal) / existingTotal;
     if (diff > 0.10) anomalies.push({ weekId, newTotal, existingTotal, diff });
