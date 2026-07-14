@@ -205,6 +205,13 @@ export const WEEKLY_PRODUCT_ALIAS = {
     '동광제약':   '피제트정',
     '한림제약':   '스타젯',
   },
+  // 원본 제품명이 필터 목록의 표기와 달라 Others로 새던 것 정정
+  pevarozet_low: {
+    '페바로젯 정 1/10mg': '페바로젯 저용량',
+  },
+  levosartan_plus: {
+    '레보살탄 플러스': '레보살탄플러스',
+  },
 };
 
 /**
