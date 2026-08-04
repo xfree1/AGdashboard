@@ -293,8 +293,10 @@ function matchProductName(cellVal, name) {
   const p = String(cellVal || '').trim();
   if (p === name) return true;
   if (p.startsWith(name + ' ')) {
-    // 다른 약품의 정식 명칭과 완전히 일치하면 제외 (예: '페바로젯 저용량' ≠ '페바로젯')
-    if (DRUGS.some(d => d.name === p)) return false;
+    // 다른 약품의 정식 명칭과 일치하면 제외 (예: '페바로젯 저용량' ≠ '페바로젯')
+    // 공백 유무 표기 차이가 있을 수 있어 공백 제거 후 비교 (예: '레보살탄 플러스' vs 등록명 '레보살탄플러스')
+    const pNoSpace = p.replace(/\s+/g, '');
+    if (DRUGS.some(d => d.name.replace(/\s+/g, '') === pNoSpace)) return false;
     return true;
   }
   return false;
