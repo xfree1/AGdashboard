@@ -225,6 +225,9 @@ export default function UploadConfirm() {
   const [checkedDrugs, setCheckedDrugs] = useState(
     () => new Set(parsed?.results?.map(r => r.drugId) ?? [])
   );
+  const [anomalyAck, setAnomalyAck] = useState(false);
+
+  const hasAnomalies = Object.values(tabState).some(s => (s.anomalies?.length ?? 0) > 0);
 
   const toggleDrug = (drugId) => {
     setCheckedDrugs(prev => {
@@ -376,6 +379,16 @@ export default function UploadConfirm() {
           {isSales ? '매출 데이터 업데이트' : '처방 데이터 업데이트'}
         </h1>
         <div className="uc-actions">
+          {!isSales && hasAnomalies && (
+            <label className="uc-anomaly-ack">
+              <input
+                type="checkbox"
+                checked={anomalyAck}
+                onChange={e => setAnomalyAck(e.target.checked)}
+              />
+              이상감지 내용을 확인했습니다
+            </label>
+          )}
           <button
             className="admin-action-btn admin-action-btn--secondary admin-action-btn--lg"
             onClick={() => navigate('/admin')}
@@ -386,7 +399,7 @@ export default function UploadConfirm() {
           <button
             className="admin-action-btn admin-action-btn--primary admin-action-btn--lg"
             onClick={handleSave}
-            disabled={saving || (!isSales && checkedDrugs.size === 0)}
+            disabled={saving || (!isSales && checkedDrugs.size === 0) || (!isSales && hasAnomalies && !anomalyAck)}
           >
             {saving ? (
               <>
