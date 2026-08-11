@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DRUGS } from '../config/drugs';
 import { detectAndParse } from '../utils/backDataParser';
 import { loadAdminUploadDates, loadWeekIdsPerDrug } from '../utils/supabaseLoader';
-import { fmtWeekDate, weekIdToSat } from '../utils/weekUtils';
+import { fmtWeekDate, weekIdToSat, satToWeekId, weekIdToMonthWeekLabel } from '../utils/weekUtils';
 import AdminLayout from '../components/AdminLayout';
 import './Admin.css';
 import './DataPreview.css';
@@ -23,6 +23,35 @@ function detectGaps(weekIds) {
     if (missing > 0) gaps.push({ from: weekIds[i - 1], to: weekIds[i], missingCount: missing });
   }
   return gaps;
+}
+
+/* 전 품목 위클리 데이터 정합성 확인 — DB에 이미 저장된 주차 사이의 빈틈을 "N월 N주차" 라벨로 나열 */
+function computeIntegrityReport(weekIdData, drugs) {
+  const report = [];
+  for (const drug of drugs) {
+    const weekIds = weekIdData[drug.id] ?? [];
+    if (weekIds.length === 0) {
+      report.push({ drugId: drug.id, drugName: drug.name, empty: true, missing: [] });
+      continue;
+    }
+    const missing = [];
+    for (let i = 1; i < weekIds.length; i++) {
+      const prevSat = weekIdToSat(weekIds[i - 1]);
+      const currSat = weekIdToSat(weekIds[i]);
+      if (!prevSat || !currSat) continue;
+      const diffWeeks = Math.round((currSat - prevSat) / (7 * 86_400_000));
+      for (let w = 1; w < diffWeeks; w++) {
+        const missingSat = new Date(prevSat);
+        missingSat.setDate(missingSat.getDate() + w * 7);
+        const missingWeekId = satToWeekId(missingSat);
+        missing.push({ weekId: missingWeekId, label: weekIdToMonthWeekLabel(missingWeekId) });
+      }
+    }
+    if (missing.length > 0) {
+      report.push({ drugId: drug.id, drugName: drug.name, empty: false, missing });
+    }
+  }
+  return report;
 }
 
 /* 검수 완료된 품목만 업로드 허용 */
@@ -188,7 +217,6 @@ function mergeAnycof(firstParsed, secondParsed) {
 
 export default function Admin() {
   const navigate     = useNavigate();
-  const importRef    = React.useRef(null);
   const secondRef    = React.useRef(null);
 
   const [uploadDates,   setUploadDates]   = useState({});
@@ -197,6 +225,8 @@ export default function Admin() {
   const [importErr,     setImportErr]     = useState('');
   const [dragging,      setDragging]      = useState(false);
   const [pendingAnycof, setPendingAnycof] = useState(null);
+  const [checking,      setChecking]      = useState(false);
+  const [checkResult,   setCheckResult]   = useState(null); // null = 모달 닫힘, [] | [...] = 모달 열림
 
   useEffect(() => {
     loadAdminUploadDates(DRUGS).then(setUploadDates).catch(() => {});
@@ -303,11 +333,19 @@ export default function Admin() {
   const handleDragOver  = (e) => { e.preventDefault(); setDragging(true); };
   const handleDragLeave = () => setDragging(false);
 
-  const handleImportFile = (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    processFirstFile(file);
+  /* ── 위클리 데이터 정합성 확인 (읽기 전용) ── */
+  const handleCheckIntegrity = async () => {
+    setChecking(true);
+    setImportErr('');
+    try {
+      const freshWeekIdData = await loadWeekIdsPerDrug(DRUGS);
+      setWeekIdData(freshWeekIdData);
+      setCheckResult(computeIntegrityReport(freshWeekIdData, DRUGS));
+    } catch (err) {
+      setImportErr('정합성 확인 중 오류가 발생했습니다: ' + err.message);
+    } finally {
+      setChecking(false);
+    }
   };
 
   const handleSecondFileDrop = (e) => {
@@ -345,22 +383,19 @@ export default function Admin() {
           <span className="admin-toolbar-label">안국약품</span>
         </div>
         <div className="admin-toolbar-btns">
-          <input
-            ref={importRef}
-            type="file"
-            accept=".xlsx,.xls"
-            style={{ display: 'none' }}
-            onChange={handleImportFile}
-          />
           <button
             className="admin-action-btn admin-action-btn--secondary admin-action-btn--lg"
-            onClick={() => importRef.current?.click()}
-            disabled={importing}
+            onClick={handleCheckIntegrity}
+            disabled={checking || weekIdData === null}
           >
-            <svg width="16" height="16" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path d="M7 9V1M4 4l3-3 3 3M2 10v1.5A1.5 1.5 0 0 0 3.5 13h7A1.5 1.5 0 0 0 12 11.5V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Import
+            {checking ? (
+              <span className="upload-spinner" />
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M13.5 4.5L6 12 2.5 8.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+            데이터 확인
           </button>
         </div>
       </div>
@@ -443,6 +478,44 @@ export default function Admin() {
 
             {importErr && (
               <div className="anycof-modal__err">{importErr}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 위클리 데이터 정합성 확인 결과 모달 */}
+      {checkResult !== null && (
+        <div className="integrity-modal-backdrop" onClick={() => setCheckResult(null)}>
+          <div className="integrity-modal" onClick={e => e.stopPropagation()}>
+            <div className="integrity-modal__header">
+              <span className="integrity-modal__title">위클리 데이터 정합성 확인</span>
+              <button className="integrity-modal__close" onClick={() => setCheckResult(null)}>✕</button>
+            </div>
+
+            {checkResult.length === 0 ? (
+              <div className="integrity-modal__success">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="M17 5.5L7.5 15 3 10.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                모든 품목의 위클리 데이터가 안전하게 저장되어 있습니다.
+              </div>
+            ) : (
+              <div className="integrity-modal__body">
+                {checkResult.map(item => (
+                  <div className="integrity-drug-block" key={item.drugId}>
+                    <span className="integrity-drug-name">{item.drugName}</span>
+                    {item.empty ? (
+                      <span className="integrity-missing-tag integrity-missing-tag--empty">업로드된 데이터가 없습니다</span>
+                    ) : (
+                      <div className="integrity-missing-list">
+                        {item.missing.map(m => (
+                          <span className="integrity-missing-tag" key={m.weekId}>{m.label} 데이터 없음</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

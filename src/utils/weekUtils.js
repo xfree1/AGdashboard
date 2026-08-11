@@ -97,6 +97,56 @@ export function fmtWeekLabel(weekId) {
 }
 
 /**
+ * weekId → 해당 월 내 몇 번째 주인지 ("N주차")
+ * weekIdToYearMonth로 귀속된 달의 전체 주 목록(달력 기준)을 구성해 순번을 매긴다.
+ * @param {string} weekId
+ * @returns {{ year: number, month: number, ordinal: number }|null}
+ */
+export function getWeekOrdinalInMonth(weekId) {
+  const sat = weekIdToSat(weekId);
+  if (!sat) return null;
+  const ym = weekIdToYearMonth(weekId);
+  if (!ym) return null;
+  const { year, month } = ym;
+
+  // 해당 달에 귀속될 수 있는 주(토요일)를 넉넉한 범위로 스캔
+  const scanStart = new Date(year, month - 1, 1 - 14);
+  const scanEnd   = new Date(year, month, 0 + 14); // 다음 달 0일 = 이번 달 마지막 날
+  let d = new Date(scanStart);
+  while (d.getDay() !== 6) d.setDate(d.getDate() + 1); // 첫 토요일까지 이동
+
+  const weeksInMonth = [];
+  while (d <= scanEnd) {
+    const wid = satToWeekId(d);
+    const widYm = weekIdToYearMonth(wid);
+    if (widYm && widYm.year === year && widYm.month === month) {
+      weeksInMonth.push({ weekId: wid, sat: new Date(d) });
+    }
+    d.setDate(d.getDate() + 7);
+  }
+  weeksInMonth.sort((a, b) => a.sat - b.sat);
+
+  const targetWeekId = satToWeekId(sat);
+  const idx = weeksInMonth.findIndex(w => w.weekId === targetWeekId);
+  if (idx === -1) return null;
+  return { year, month, ordinal: idx + 1 };
+}
+
+/**
+ * weekId → "N월 N주차" 형식 라벨 (연도가 올해가 아니면 "YY년" 접두)
+ * @param {string} weekId
+ * @returns {string}
+ */
+export function weekIdToMonthWeekLabel(weekId) {
+  const info = getWeekOrdinalInMonth(weekId);
+  if (!info) return String(weekId);
+  const { year, month, ordinal } = info;
+  const currentYear = new Date().getFullYear();
+  const yearPrefix = year !== currentYear ? `${String(year).slice(2)}년 ` : '';
+  return `${yearPrefix}${month}월 ${ordinal}주차`;
+}
+
+/**
  * weekId → { year, month, satLabel }
  * TrendChart의 축/툴팁 레이블 생성에 사용.
  * @param {string} weekId
