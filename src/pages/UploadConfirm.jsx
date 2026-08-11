@@ -185,17 +185,57 @@ function checkAnomalies(parsedAgg, existingMap, existingWeeks, metric) {
   for (const weekId of checkWeeks) {
     // DB에 non-zero 값이 있는 벤더만 비교 대상 — 신규 벤더 소급 추가는 이상 아님
     let newTotal = 0, existingTotal = 0;
+    const dropped = []; // 기존엔 값이 있었는데 이번 파일에서 0이 된 키 — 표기 변경 의심
     for (const [key, weekMap] of Object.entries(existingMap)) {
       const oldVal = weekMap[weekId]?.[metric] ?? 0;
       if (oldVal === 0) continue;
       existingTotal += oldVal;
-      newTotal += vendorMap[key]?.[weekId]?.[metric] ?? 0;
+      const newVal = vendorMap[key]?.[weekId]?.[metric] ?? 0;
+      newTotal += newVal;
+      if (newVal === 0) dropped.push({ key, oldVal });
     }
     if (existingTotal === 0) continue;
     const diff = Math.abs(newTotal - existingTotal) / existingTotal;
-    if (diff > 0.10) anomalies.push({ weekId, newTotal, existingTotal, diff });
+    if (diff > 0.10) {
+      dropped.sort((a, b) => b.oldVal - a.oldVal);
+      // 파일에는 있지만 DB엔 아예 없던 키 — 위 dropped와 짝지어보면 표기 변경 여부 바로 보임
+      const appeared = Object.keys(vendorMap)
+        .filter(key => !(key in existingMap))
+        .map(key => ({ key, newVal: vendorMap[key]?.[weekId]?.[metric] ?? 0 }))
+        .filter(k => k.newVal > 0)
+        .sort((a, b) => b.newVal - a.newVal)
+        .slice(0, 3);
+      anomalies.push({
+        weekId, newTotal, existingTotal, diff,
+        droppedKeys: dropped.slice(0, 3),
+        appearedKeys: appeared,
+      });
+    }
   }
   return anomalies;
+}
+
+/**
+ * DB엔 있던 제품·벤더·주차 조합이 새 파일엔 아예 없는 경우 감지
+ * — checkAnomalies는 기존값이 0이던 항목을 비교 대상에서 제외하고,
+ *   checkProductWeekGaps는 파일 내부 주차끼리만 비교하기 때문에
+ *   "이제 막 론칭해 0이던 자사 제품이 특정 주차 파일에서만 통째로 빠지는" 경우를 못 잡는다.
+ *   (레보살탄플러스 5·6월 데이터 누락 사고가 정확히 이 케이스)
+ */
+function checkVendorDropout(parsedAgg, existingMap, existingWeeks) {
+  const { weeks, vendorMap } = parsedAgg;
+  const overlapWeeks = weeks.filter(w => existingWeeks.has(w));
+  if (overlapWeeks.length === 0) return [];
+
+  const dropped = [];
+  for (const [key, weekMap] of Object.entries(existingMap)) {
+    for (const weekId of overlapWeeks) {
+      if (!(weekId in weekMap)) continue;                    // DB에 해당 주차 행 자체가 없었음 — 비교 대상 아님
+      if (vendorMap[key]?.[weekId] !== undefined) continue;   // 파일에도 행이 있음 — 값 변경은 changes에서 별도 처리
+      dropped.push({ key, weekId, oldVal: weekMap[weekId] });
+    }
+  }
+  return dropped.sort((a, b) => a.weekId.localeCompare(b.weekId));
 }
 
 /* ── 컴포넌트 ─────────────────────────────────────────── */
@@ -226,8 +266,22 @@ export default function UploadConfirm() {
     () => new Set(parsed?.results?.map(r => r.drugId) ?? [])
   );
   const [anomalyAck, setAnomalyAck] = useState(false);
+  const [copiedDrugId, setCopiedDrugId] = useState('');
 
-  const hasAnomalies = Object.values(tabState).some(s => (s.anomalies?.length ?? 0) > 0);
+  const hasAnomalies = Object.values(tabState).some(s => (s.anomalies?.length ?? 0) > 0 || (s.dropouts?.length ?? 0) > 0);
+
+  /** 이상감지 원인 진단 코드 생성 후 클립보드 복사 — Claude에게 그대로 붙여넣으면 원인 파악용 */
+  const copyAnomalyCode = (drugId, anomalies) => {
+    const lines = [`ANOMALY drug=${drugId}`];
+    for (const a of anomalies) {
+      lines.push(`${a.weekId} ${Math.round(a.existingTotal)}->${Math.round(a.newTotal)} diff=${(a.diff * 100).toFixed(1)}%`);
+      if (a.droppedKeys?.length) lines.push(`  drop: ${a.droppedKeys.map(d => `${d.key}=${Math.round(d.oldVal)}`).join(', ')}`);
+      if (a.appearedKeys?.length) lines.push(`  new:  ${a.appearedKeys.map(n => `${n.key}=${Math.round(n.newVal)}`).join(', ')}`);
+    }
+    navigator.clipboard?.writeText(lines.join('\n'));
+    setCopiedDrugId(drugId);
+    setTimeout(() => setCopiedDrugId(''), 1500);
+  };
 
   const toggleDrug = (drugId) => {
     setCheckedDrugs(prev => {
@@ -250,7 +304,7 @@ export default function UploadConfirm() {
     parsed.results.forEach(({ drugId, rows }) => {
       setTabState(prev => ({
         ...prev,
-        [drugId]: { loading: true, existingMap: {}, existingWeeks: new Set(), existingKeys: new Set(), error: '', anomalies: [], weekGaps: [], seqGaps: [] },
+        [drugId]: { loading: true, existingMap: {}, existingWeeks: new Set(), existingKeys: new Set(), error: '', anomalies: [], weekGaps: [], seqGaps: [], dropouts: [] },
       }));
       const drug   = findDrug(drugId);
       const metric = drug?.metric ?? 'qty';
@@ -260,9 +314,10 @@ export default function UploadConfirm() {
           const anomalies = checkAnomalies(parsedAgg, existingMap, existingWeeks, metric);
           const weekGaps  = checkProductWeekGaps(parsedAgg);
           const seqGaps   = checkWeekSequenceGaps(parsedAgg, existingWeeks);
+          const dropouts  = checkVendorDropout(parsedAgg, existingMap, existingWeeks);
           setTabState(prev => ({
             ...prev,
-            [drugId]: { loading: false, existingMap, existingWeeks, existingKeys, error: '', anomalies, weekGaps, seqGaps },
+            [drugId]: { loading: false, existingMap, existingWeeks, existingKeys, error: '', anomalies, weekGaps, seqGaps, dropouts },
           }));
         })
         .catch(e => {
@@ -480,6 +535,7 @@ export default function UploadConfirm() {
     const anomalies = state.anomalies ?? [];
     const weekGaps  = state.weekGaps  ?? [];
     const seqGaps   = state.seqGaps   ?? [];
+    const dropouts  = state.dropouts  ?? [];
 
     const drug     = findDrug(drugId);
     const metric   = drug?.metric ?? 'qty';
@@ -564,6 +620,34 @@ export default function UploadConfirm() {
           </div>
         )}
 
+        {/* DB엔 있던 제품 행이 파일에서 통째로 빠진 경우 — 저장 시 조용히 삭제됨 */}
+        {dropouts.length > 0 && (
+          <div className="uc-anomaly uc-anomaly--gap">
+            <svg className="uc-anomaly__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="M8 6v3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="8" cy="11.5" r="0.75" fill="currentColor"/>
+            </svg>
+            <div className="uc-anomaly__body">
+              <strong className="uc-anomaly__title">기존 데이터가 있던 제품 행이 이번 파일엔 없습니다 — 저장 시 삭제됩니다</strong>
+              <p className="uc-anomaly__desc">값이 0이던 제품도 포함해서, DB에 있던 조합이 파일에서 빠지면 그대로 지워집니다. 원본 파일 확인 후 저장해주세요.</p>
+              <div className="uc-anomaly__list">
+                {dropouts.slice(0, 20).map((d, i) => {
+                  const [product, vendor] = d.key.split('||');
+                  return (
+                    <span key={i} className="uc-anomaly__item uc-anomaly__item--gap">
+                      <strong>{product || vendor}</strong>{vendor && product !== vendor ? ` (${vendor})` : ''} — {fmtWeekLabel(d.weekId)} 행 없음 (기존값: {Math.round(d.oldVal).toLocaleString()})
+                    </span>
+                  );
+                })}
+                {dropouts.length > 20 && (
+                  <span className="uc-anomaly__item uc-anomaly__item--gap">외 {dropouts.length - 20}건 더...</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 이상 감지 블록 */}
         {anomalies.length > 0 && (
           <div className="uc-anomaly">
@@ -573,8 +657,17 @@ export default function UploadConfirm() {
               <circle cx="8" cy="11.5" r="0.75" fill="currentColor"/>
             </svg>
             <div className="uc-anomaly__body">
-              <strong className="uc-anomaly__title">데이터 이상 감지 — 확인 후 저장 가능</strong>
-              <p className="uc-anomaly__desc">기존 데이터 대비 10% 이상 차이나는 주차가 있습니다. 파일을 확인해주세요.</p>
+              <div className="uc-anomaly__titlerow">
+                <strong className="uc-anomaly__title">데이터 이상 감지 — 확인 후 저장 가능</strong>
+                <button
+                  type="button"
+                  className="uc-anomaly__copy"
+                  onClick={() => copyAnomalyCode(drugId, anomalies)}
+                >
+                  {copiedDrugId === drugId ? '복사됨' : '진단 코드 복사'}
+                </button>
+              </div>
+              <p className="uc-anomaly__desc">기존 데이터 대비 10% 이상 차이나는 주차가 있습니다. 원인이 궁금하면 위 버튼으로 복사해서 Claude에게 붙여넣어주세요.</p>
               <div className="uc-anomaly__list">
                 {anomalies.map(a => (
                   <span key={a.weekId} className="uc-anomaly__item">
@@ -752,7 +845,7 @@ export default function UploadConfirm() {
       <div className="preview-tabbar">
         <div className="preview-tabs">
           {tabs.map((tab, idx) => {
-            const hasAnomaly  = (tabState[tab.drugId]?.anomalies?.length ?? 0) > 0;
+            const hasAnomaly  = (tabState[tab.drugId]?.anomalies?.length ?? 0) > 0 || (tabState[tab.drugId]?.dropouts?.length ?? 0) > 0;
             const hasWeekGaps = (tabState[tab.drugId]?.weekGaps?.length  ?? 0) > 0;
             const hasSeqGaps  = (tabState[tab.drugId]?.seqGaps?.length   ?? 0) > 0;
             const hasWarn     = hasAnomaly || hasWeekGaps || hasSeqGaps;

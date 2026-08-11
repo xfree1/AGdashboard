@@ -510,9 +510,29 @@
   gap: var(--space-1);
 }
 
+.uc-anomaly__titlerow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .uc-anomaly__title {
   font-size: var(--text-sm);
   font-weight: 700;
+}
+
+.uc-anomaly__copy {
+  padding: 5px var(--space-3);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-danger-dark);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.uc-anomaly__copy:hover {
+  background: var(--color-danger-dim);
 }
 
 .uc-anomaly__desc {
