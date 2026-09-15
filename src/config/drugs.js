@@ -12,7 +12,6 @@ export const DRUGS = [
     topN: 5,
     showGR: true,
     showDonut: true,
-    prelaunch: true,  // 출시 전 — 이 줄만 삭제하면 실데이터로 전환
   },
   {
     id: 'levosartan_plus',
@@ -26,7 +25,6 @@ export const DRUGS = [
     topN: 5,
     showGR: true,
     showDonut: true,
-    prelaunch: true,  // 출시 전 — 이 줄만 삭제하면 실데이터로 전환
   },
   {
     id: 'pevarozet',

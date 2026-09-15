@@ -144,7 +144,7 @@ function buildRowsFromWeeklyData(rawData, drug, sectionConfig, productFilter, pr
 /* ────────────────────────────────────────────────
    데이터 변환
 ──────────────────────────────────────────────── */
-function buildSections(rawRows, sectionConfig, maxProducts, productFilter) {
+function buildSections(rawRows, sectionConfig, maxProducts) {
   const sectionMap = {};
   rawRows.forEach(row => {
     const key = `${row.market_scope}|${row.value_type}|${row.metric}`;
@@ -193,20 +193,23 @@ function buildSections(rawRows, sectionConfig, maxProducts, productFilter) {
         missingProducts: [...missingProductSet],
       };
     }
-    const orderMap = productFilter
-      ? Object.fromEntries(productFilter.map((p, i) => [p, i]))
-      : null;
+    // 정렬: 당월(최신 달) 평균 내림차순 — 화면의 '○월 평균' 숫자와 순서를 일치시킨다
+    // (이전에는 WEEKLY_PRODUCT_FILTER 배열 순서를 그대로 썼으나, 그 배열은 코드에 추가된
+    //  이력순이라 신규 품목이 끼어들 때마다 순서가 의미 없이 밀렸음)
+    const currentMonthWeeks = groupWeeksByMonth(intersectWeeks).at(-1)?.weeks ?? intersectWeeks;
     const items = Object.values(productMap);
+    const avgCache = new Map(items.map(r => {
+      const vals = currentMonthWeeks.map(w => r.values[w]).filter(v => v != null);
+      return [r, vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0];
+    }));
+    // 당월 평균이 같을 때(미출시 등 0값 동률) 순서가 흔들리지 않도록 전체기간 합계로 2차 정렬
     const sumCache = new Map(items.map(r => [r, Object.values(r.values).reduce((s, v) => s + (v ?? 0), 0)]));
     const sorted = items.sort((a, b) => {
       const rank = r => r.product === '전체' ? 2 : r.product === 'Others' ? 1 : 0;
       const ra = rank(a), rb = rank(b);
       if (ra !== rb) return ra - rb;
-      if (orderMap) {
-        const oa = orderMap[a.product] ?? orderMap[a.manufacturer] ?? 999;
-        const ob = orderMap[b.product] ?? orderMap[b.manufacturer] ?? 999;
-        if (oa !== ob) return oa - ob;
-      }
+      const da = avgCache.get(a) ?? 0, db = avgCache.get(b) ?? 0;
+      if (da !== db) return db - da;
       return (sumCache.get(b) ?? 0) - (sumCache.get(a) ?? 0);
     });
     // 필터 미지정 시 상위 N개 + Others 자동 생성
@@ -603,14 +606,12 @@ export default function WeeklyPage() {
     if (!rawRows) return [];
     // drugId가 바뀐 직후 rawRows에 이전 약품 데이터가 남아있을 수 있음 → 무시
     if (rawRows.length > 0 && rawRows[0].drug_id !== drugId) return [];
-    const npcabDbId   = PCAB_NPCAB_DB_ID[drugId];
-    const npcabFilter = npcabDbId ? (WEEKLY_PRODUCT_FILTER[npcabDbId] ?? productFilter) : productFilter;
     const pcabInCfg   = sectionConfig.filter(s => s.scope !== 'pcab_out');
     const pcabOutCfg  = sectionConfig.filter(s => s.scope === 'pcab_out');
     const pcabInRows  = rawRows.filter(r => r.market_scope !== 'pcab_out');
     const pcabOutRows = rawRows.filter(r => r.market_scope === 'pcab_out');
-    const inSecs  = pcabInCfg.length  > 0 ? buildSections(pcabInRows,  pcabInCfg,  maxProducts, productFilter) : [];
-    const outSecs = pcabOutCfg.length > 0 ? buildSections(pcabOutRows, pcabOutCfg, maxProducts, npcabFilter)   : [];
+    const inSecs  = pcabInCfg.length  > 0 ? buildSections(pcabInRows,  pcabInCfg,  maxProducts) : [];
+    const outSecs = pcabOutCfg.length > 0 ? buildSections(pcabOutRows, pcabOutCfg, maxProducts) : [];
     const allSecs = [...inSecs, ...outSecs];
 
     return allSecs.map(section => {
@@ -628,7 +629,7 @@ export default function WeeklyPage() {
       });
       return { ...section, rows, pairedRawRows };
     });
-  }, [rawRows, sectionConfig, maxProducts, productFilter, drugId]);
+  }, [rawRows, sectionConfig, maxProducts, drugId]);
 
   const allMonths = useMemo(() => {
     const allWeeks = new Set();
