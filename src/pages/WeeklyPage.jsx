@@ -743,7 +743,7 @@ export default function WeeklyPage() {
       <div className="wt-page">
         <div className="wt-header">
           <div className="wt-header-left">
-            <h1 className="wt-title">{drug.name} Weekly</h1>
+            <h1 className="wt-title">{drug.weeklyName ?? drug.name} Weekly</h1>
             <span className="wt-subtitle">안국약품 주요제품 주간 현황 (UBIST)</span>
           </div>
         </div>

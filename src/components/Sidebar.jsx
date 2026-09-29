@@ -228,7 +228,7 @@ export default function Sidebar() {
                     navigate('/weekly/' + drug.id);
                   }}
                 >
-                  {drug.name}
+                  {drug.weeklyName ?? drug.name}
                   {latestWeeks[drug.id] && (() => {
                     const isNew = pathname !== '/weekly/' + drug.id &&
                                   latestWeeks[drug.id] !== seenWeeks[drug.id];

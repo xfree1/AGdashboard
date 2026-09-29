@@ -3,6 +3,8 @@ export const DRUGS = [
     id: 'pevarozet_low',
     dbId: 'pevarozet_low',
     name: '페바로젯 저용량',
+    // 화면 표시용 이름 — name은 백데이터/시장파일 감지·제품명 정규화에 쓰이므로 건드리지 않는다
+    weeklyName: '페바로젯 1/10mg',
     ingredient: ['ezetimibe', 'pitavastatin'],
     excludeIngredient: ['fenofibrate', 'fenofibric'],
     marketProduct: '바로에젯',
