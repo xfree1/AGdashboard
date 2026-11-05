@@ -229,8 +229,13 @@ export default function Admin() {
   const [checkResult,   setCheckResult]   = useState(null); // null = 모달 닫힘, [] | [...] = 모달 열림
 
   useEffect(() => {
+    // 업로드 확인 화면으로 넘어가도 전체 조회가 계속 돌면 그쪽 쿼리가 timeout 남 → 이탈 시 중단
+    const controller = new AbortController();
     loadAdminUploadDates(DRUGS).then(setUploadDates).catch(() => {});
-    loadWeekIdsPerDrug(DRUGS).then(setWeekIdData).catch(() => setWeekIdData({}));
+    loadWeekIdsPerDrug(DRUGS, controller.signal)
+      .then(setWeekIdData)
+      .catch(e => { if (e.name !== 'AbortError') setWeekIdData({}); });
+    return () => controller.abort();
   }, []);
   // pendingAnycof = { parsed, neededType: 'market'|'standalone', firstFileName }
 

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { DRUGS } from '../config/drugs';
 import { supabase } from '../lib/supabase';
 import { fmtWeekLabel, weekIdToSat } from '../utils/weekUtils';
-import { fetchAllRows } from '../utils/supabaseLoader';
+import { fetchAllRowsKeyset } from '../utils/supabaseLoader';
 import AdminLayout from '../components/AdminLayout';
 import './UploadConfirm.css';
 
@@ -37,14 +37,12 @@ function makeTabLabel(drugId) {
 
 /** Supabase에서 해당 drugId의 기존 데이터 전체 조회 */
 async function fetchExisting(drugId) {
-  const allData = await fetchAllRows(() =>
+  // 맵 구성만 하므로 정렬 불필요 — id keyset으로 timeout 회피
+  const allData = await fetchAllRowsKeyset(() =>
     supabase
       .from('weekly_data')
-      .select('product, vendor, week_id, rx_value, qty_value')
+      .select('id, product, vendor, week_id, rx_value, qty_value')
       .eq('drug_id', drugId)
-      .order('week_id',  { ascending: true })
-      .order('product',  { ascending: true, nullsFirst: false })
-      .order('vendor',   { ascending: true, nullsFirst: false })
   );
 
   const existingMap   = {};  // `product||vendor` → week_id → { rx, qty }

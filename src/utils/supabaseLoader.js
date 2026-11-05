@@ -19,6 +19,32 @@ export async function fetchAllRows(makeQuery) {
   return all;
 }
 
+/**
+ * PK(id) 기준 keyset 페이지네이션 — 대용량 조회용.
+ * OFFSET + 다중 컬럼 정렬은 행이 많으면 statement timeout이 나므로 id > lastId로 넘긴다.
+ * makeQuery는 select에 id를 포함하고 order는 지정하지 않는다. 결과 순서는 id 순.
+ * signal(AbortSignal)을 넘기면 abort 시 다음 페이지를 요청하지 않고 AbortError로 종료.
+ */
+export async function fetchAllRowsKeyset(makeQuery, signal) {
+  const PAGE = 1000;
+  let all    = [];
+  let lastId = 0;
+  while (true) {
+    let query = makeQuery()
+      .gt('id', lastId)
+      .order('id', { ascending: true })
+      .limit(PAGE);
+    if (signal) query = query.abortSignal(signal);
+    const { data, error } = await query;
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    if (error) throw new Error(error.message);
+    if (!data?.length) break;
+    all.push(...data);
+    lastId = data[data.length - 1].id;
+  }
+  return all;
+}
+
 /* ── 더미 데이터 (실 데이터 교체 전 틀 유지용) ─────────────────── */
 const DUMMY_WEEKS = [
   '24.40주','24.41주','24.42주','24.43주','24.44주',
@@ -141,19 +167,22 @@ export async function loadAdminUploadDates(drugs) {
 /**
  * 품목별 DB 주차 시퀀스 조회 — 어드민 데이터 상태 표시에 사용
  * 각 품목의 모든 week_id를 가져와 { drugId: string[] } 형태로 반환
+ * 전체 테이블을 훑는 무거운 조회라 다른 페이지 쿼리가 timeout 나지 않도록
+ * id keyset + signal(페이지 이탈 시 abort)로 부하를 줄인다.
  * @param {{ id: string, dbId: string }[]} drugs
+ * @param {AbortSignal} [signal]
  * @returns {Promise<Record<string, string[]>>}  { drug.id → 정렬된 week_id[] }
  */
-export async function loadWeekIdsPerDrug(drugs) {
+export async function loadWeekIdsPerDrug(drugs, signal) {
   const results = await Promise.all(
     drugs.map(async ({ id, dbId }) => {
       const drugId = dbId ?? id;
-      const rows   = await fetchAllRows(() =>
+      const rows   = await fetchAllRowsKeyset(() =>
         supabase
           .from('weekly_data')
-          .select('week_id')
-          .eq('drug_id', drugId)
-          .order('week_id', { ascending: true })
+          .select('id, week_id')
+          .eq('drug_id', drugId),
+        signal
       );
       const weekIds = [...new Set(rows.map(r => r.week_id))].sort();
       return [id, weekIds];
