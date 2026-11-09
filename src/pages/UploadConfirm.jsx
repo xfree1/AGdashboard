@@ -236,6 +236,41 @@ function checkVendorDropout(parsedAgg, existingMap, existingWeeks) {
   return dropped.sort((a, b) => a.weekId.localeCompare(b.weekId));
 }
 
+/**
+ * 실제로 다시 써야 하는 주차만 추린다 — 신규 주차 + DB와 행 구성·값이 다른 주차.
+ * 백데이터 파일은 전체 기간을 담고 있어 매번 전 주차를 DELETE/INSERT하면
+ * 수만 행 DELETE가 한 statement로 나가 statement timeout이 난다.
+ * existingMap이 없으면(조회 실패 등) 안전하게 전체 주차를 반환.
+ */
+function pickWeeksToWrite(dedupedRows, existingMap, existingKeys) {
+  const allWeeks = [...new Set(dedupedRows.map(r => r.week_id))];
+  if (!existingMap || !existingKeys) return allWeeks;
+
+  const fileByWeek = {};  // week_id → Map(pvKey → { rx, qty })
+  for (const r of dedupedRows) {
+    const pvKey = `${r.product || ''}||${r.vendor || ''}`;
+    if (!fileByWeek[r.week_id]) fileByWeek[r.week_id] = new Map();
+    fileByWeek[r.week_id].set(pvKey, { rx: r.rx_value ?? 0, qty: r.qty_value ?? 0 });
+  }
+
+  const dbCountByWeek = {};
+  for (const k of existingKeys) {
+    const weekId = k.slice(k.lastIndexOf('||') + 2);
+    dbCountByWeek[weekId] = (dbCountByWeek[weekId] ?? 0) + 1;
+  }
+
+  const same = (a, b) => Math.abs(a - b) < 1e-6;
+  return allWeeks.filter(weekId => {
+    const fileMap = fileByWeek[weekId];
+    if ((dbCountByWeek[weekId] ?? 0) !== fileMap.size) return true;
+    for (const [pvKey, v] of fileMap) {
+      const old = existingMap[pvKey]?.[weekId];
+      if (!old || !same(old.rx, v.rx) || !same(old.qty, v.qty)) return true;
+    }
+    return false;
+  });
+}
+
 /* ── 컴포넌트 ─────────────────────────────────────────── */
 
 export default function UploadConfirm() {
@@ -373,21 +408,28 @@ export default function UploadConfirm() {
           const dedupedRows = Object.values(dedupMap);
           if (dedupedRows.length === 0) continue;
 
-          // 업로드 주차 범위의 기존 데이터 삭제 — 오염 데이터 덮어쓰기 보장
-          const weekIds = [...new Set(dedupedRows.map(r => r.week_id))];
-          for (let i = 0; i < weekIds.length; i += 100) {
-            const batch = weekIds.slice(i, i + 100);
+          // 신규·변경 주차만 다시 쓴다 (동일한 주차는 건드리지 않음)
+          const ts = tabState[drugId];
+          const weekIds = ts && !ts.loading && !ts.error
+            ? pickWeeksToWrite(dedupedRows, ts.existingMap, ts.existingKeys)
+            : pickWeeksToWrite(dedupedRows, null, null);
+          if (weekIds.length === 0) continue;
+          const writeSet  = new Set(weekIds);
+          const writeRows = dedupedRows.filter(r => writeSet.has(r.week_id));
+
+          // 기존 데이터 삭제 — 주차 단위로 쪼개 statement timeout 회피
+          for (const weekId of weekIds) {
             const { error: delErr } = await supabase
               .from('weekly_data')
               .delete()
               .eq('drug_id', drugId)
-              .in('week_id', batch);
-            if (delErr) throw new Error(delErr.message);
+              .eq('week_id', weekId);
+            if (delErr) throw new Error(`${weekId} 삭제 실패: ${delErr.message}`);
           }
 
-          // 전체 행 INSERT
-          for (let i = 0; i < dedupedRows.length; i += BATCH_SIZE) {
-            const batch = dedupedRows.slice(i, i + BATCH_SIZE);
+          // 대상 주차 행 INSERT
+          for (let i = 0; i < writeRows.length; i += BATCH_SIZE) {
+            const batch = writeRows.slice(i, i + BATCH_SIZE);
             const { error: err } = await supabase
               .from('weekly_data')
               .insert(batch);
